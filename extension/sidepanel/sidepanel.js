@@ -233,7 +233,8 @@ async function collectSettings() {
     videoQuality:  $("#setVideoQuality").value,
     imageQuality:  $("#setImageQuality").value,
     retries:       Number($("#setRetries").value)||5,
-    defaultMode:   $("#setDefaultMode").value
+    defaultMode:   $("#setDefaultMode").value,
+    language:      $("#setLanguage")?.value || "en"
   };
 }
 async function loadSettings() {
@@ -247,11 +248,39 @@ async function loadSettings() {
   $("#setRetries").value      = settings.retries      || 5;
   $("#setVideoQuality").value = settings.videoQuality || "720p";
   $("#setImageQuality").value = settings.imageQuality || "1k";
+  if ($("#setLanguage")) $("#setLanguage").value = settings.language || "en";
 }
 $("#saveSettings").addEventListener("click", async () => {
   const s = await collectSettings();
   await send("SETTINGS_SET", { settings: s });
   logLine("#settingStatus", "Settings saved.");
+});
+$("#resetDefaults").addEventListener("click", async () => {
+  const defaults = {
+    defaultMode: "text_to_video",
+    imageModel: "quality",
+    aspectRatio: "9:16",
+    videoOption: "10s",
+    imageMode: "new_image",
+    retries: 5,
+    videoQuality: "720p",
+    imageQuality: "1k",
+    language: "en"
+  };
+  $("#setDefaultMode").value  = defaults.defaultMode;
+  $("#setImageModel").value   = defaults.imageModel;
+  $("#setAspect").value       = defaults.aspectRatio;
+  $("#setVideoOpt").value     = defaults.videoOption;
+  $("#setImageMode").value    = defaults.imageMode;
+  $("#setRetries").value      = defaults.retries;
+  $("#setVideoQuality").value = defaults.videoQuality;
+  $("#setImageQuality").value = defaults.imageQuality;
+  if ($("#setLanguage")) $("#setLanguage").value = defaults.language;
+  await send("SETTINGS_SET", { settings: defaults });
+  logLine("#settingStatus", "Defaults restored.");
+});
+$("#openDlPrefs").addEventListener("click", () => {
+  chrome.tabs.create({ url: "chrome://settings/downloads" });
 });
 $("#calOpen").addEventListener("click", () => send("CALIBRATE_OPEN", { platform: PLATFORM }));
 $("#calReset").addEventListener("click", async () => {
@@ -310,14 +339,44 @@ $("#btnExportLogs").addEventListener("click", async () => {
     downloadAsFile(lines, "grok_bulk_studio_logs.txt", "text/plain");
   }
 });
-$("#btnClearLogs").addEventListener("click", async () => { await send("LOG_CLEAR"); $("#logsView").textContent = ""; });
+$("#btnClearLogs").addEventListener("click", async () => {
+  await send("LOG_CLEAR");
+  $("#logsView").textContent = "";
+  $("#logsView").style.display = "none";
+  $("#logsEmpty").style.display = "flex";
+});
+$("#btnCopyLogs").addEventListener("click", async () => {
+  const r = await send("LOG_GET");
+  if (!r.ok || !r.logs.length) {
+    logLine("#diagOutput", "No logs to copy.");
+    return;
+  }
+  const text = r.logs.map(l => `${new Date(l.t).toISOString()} [${l.level}] ${l.msg}`).join("\n");
+  try {
+    await navigator.clipboard.writeText(text);
+    logLine("#diagOutput", `Copied ${r.logs.length} log lines.`);
+  } catch (e) {
+    logLine("#diagOutput", "Clipboard blocked — using fallback download.");
+    downloadAsFile(text, "grok_logs.txt", "text/plain");
+  }
+});
 
 async function refreshLogs() {
   const r = await send("LOG_GET");
   if (!r.ok) return;
-  $("#logsView").textContent = r.logs.slice().reverse()
+  const empty = $("#logsEmpty");
+  const view  = $("#logsView");
+  if (!r.logs.length) {
+    empty.style.display = "flex";
+    view.style.display = "none";
+    return;
+  }
+  empty.style.display = "none";
+  view.style.display = "block";
+  view.textContent = r.logs.slice().reverse()
     .map(l => `${new Date(l.t).toLocaleTimeString()} [${l.level}] ${l.msg}`)
     .join("\n");
+  if ($("#autoScroll").checked) view.scrollTop = 0;
 }
 
 // ============ Active project selector ============

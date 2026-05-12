@@ -206,6 +206,39 @@ button:disabled{opacity:.55;cursor:not-allowed}
 .bottombar button.big{flex:2}
 .bottombar .flag svg{stroke:var(--muted)}
 
+/* ===== Download settings card icon button ===== */
+.icon-btn{
+  background:var(--panel-2);color:var(--muted);border:1px solid var(--line);border-radius:10px;
+  padding:8px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer
+}
+.icon-btn:hover{color:var(--text);border-color:var(--line-2)}
+
+/* ===== Sync note ===== */
+.sync-note{
+  margin:0;color:var(--muted);font-size:11px;padding:8px 14px;background:var(--panel);
+  border:1px solid var(--line);border-radius:12px;display:flex;align-items:center;gap:6px
+}
+.sync-note svg{stroke:var(--muted);flex:0 0 auto}
+
+/* ===== Logs toolbar ===== */
+.logs-toolbar{
+  display:flex;align-items:center;justify-content:flex-end;gap:14px;
+  background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:8px 12px
+}
+.autoscroll-row{display:flex;align-items:center;gap:8px;color:var(--text);font-size:12px;margin-right:auto}
+.logs-toolbar .link-btn{color:var(--muted)}
+.logs-toolbar .link-btn:hover{color:var(--text)}
+.logs-toolbar .link-btn svg{stroke:currentColor}
+
+/* ===== Logs empty state ===== */
+.logs-empty{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  color:var(--muted);font-size:13px;padding:40px 12px;text-align:center
+}
+.logs-empty svg{stroke:var(--muted);flex:0 0 auto}
+
+.diag-tools{margin-top:8px}
+
 /* ===== Mobile tighten ===== */
 @media (max-width:380px){
   .mode-grid{grid-template-columns:1fr}

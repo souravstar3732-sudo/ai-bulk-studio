@@ -282,6 +282,31 @@ Third prompt."></textarea>
         <small>Select the image quality for automatic downloads.</small>
       </div>
       <div class="card">
+        <div class="card-title"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h7"/><path d="M4 9h7"/><path d="M7 4v6"/><path d="M14 19l3-8 3 8"/><path d="M15 17h4"/></svg><span>Language</span></div>
+        <select id="setLanguage" data-testid="set-language">
+          <option value="en">English</option>
+          <option value="es">Español</option>
+          <option value="fr">Français</option>
+          <option value="de">Deutsch</option>
+          <option value="hi">हिन्दी</option>
+        </select>
+        <small>Select your preferred language.</small>
+      </div>
+
+      <div class="card download-settings">
+        <div class="card-title spread">
+          <span class="title-left">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span>Download Settings</span>
+          </span>
+          <button class="icon-btn" id="openDlPrefs" title="Open Chrome download settings" data-testid="open-dl-prefs">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1A2 2 0 1 1 7 4.6l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+          </button>
+        </div>
+        <small>Videos are downloaded to Chrome's Download folder. Each project will have its own folder to store videos.</small>
+      </div>
+
+      <div class="card">
         <div class="card-title"><span>Calibration</span></div>
         <div class="row gap">
           <button class="ghost" id="calOpen" data-testid="cal-open">Open Calibration</button>
@@ -299,22 +324,50 @@ Third prompt."></textarea>
       </div>
 
       <div class="row gap save-row">
-        <button class="primary" id="saveSettings" data-testid="save-settings">Save Settings</button>
+        <button class="ghost" id="resetDefaults" data-testid="reset-defaults">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.5 15a9 9 0 1 1-2.1-9.4L23 10"/></svg>
+          Reset Defaults
+        </button>
+        <button class="primary" id="saveSettings" data-testid="save-settings">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+          Save Settings
+        </button>
       </div>
+      <p class="sync-note">
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Settings are automatically synced across all browser tabs.
+      </p>
       <div class="status-pane" id="settingStatus" data-testid="setting-status"></div>
     </section>
 
     <!-- =================== DEBUG LOGS =================== -->
     <section id="tab-logs" class="panel">
-      <div class="row gap">
+      <div class="logs-toolbar">
+        <label class="autoscroll-row">
+          <span>Auto-scroll</span>
+          <span class="switch"><input type="checkbox" id="autoScroll" checked data-testid="auto-scroll"/><span class="slider"></span></span>
+        </label>
+        <button class="link-btn" id="btnCopyLogs" data-testid="btn-copy-logs">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          <span>Copy</span>
+        </button>
+        <button class="link-btn" id="btnClearLogs" data-testid="btn-clear-logs">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+          <span>Clear</span>
+        </button>
+      </div>
+      <div class="row gap diag-tools">
         <button class="primary" id="btnValidate" data-testid="btn-validate">Validate Selectors</button>
         <button class="primary" id="btnDiagnose" data-testid="btn-diagnose">Diagnose Page</button>
         <button class="ghost"   id="btnRefreshLogs" data-testid="btn-refresh-logs">Refresh</button>
         <button class="ghost"   id="btnExportLogs"  data-testid="btn-export-logs">Export</button>
-        <button class="ghost"   id="btnClearLogs"   data-testid="btn-clear-logs">Clear</button>
       </div>
-      <div class="status-pane" id="diagOutput" data-testid="diag-output" style="max-height:280px"></div>
-      <div class="status-pane" id="logsView"   data-testid="logs-view"  style="max-height:340px"></div>
+      <div class="status-pane" id="diagOutput" data-testid="diag-output" style="max-height:260px"></div>
+      <div id="logsEmpty" class="logs-empty" data-testid="logs-empty">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
+        <span>No logs yet. Start an automation to see activity here.</span>
+      </div>
+      <div class="status-pane" id="logsView" data-testid="logs-view" style="display:none;max-height:380px"></div>
     </section>
   </main>
 
