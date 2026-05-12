@@ -7,274 +7,332 @@
   <link rel="stylesheet" href="sidepanel.css" />
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">
-      <span class="dot"></span>
-      <span>Grok Bulk Studio</span>
+  <!-- ===== Top brand block ===== -->
+  <header class="brand-block">
+    <div class="brand-row">
+      <div class="brand-text">
+        <div class="brand-title">Grok Bulk Studio <span class="ver" id="topVersion">v1.1.0</span></div>
+        <p class="brand-sub">Control batch automation process for <b>grok.com</b>.</p>
+      </div>
+      <div class="brand-actions">
+        <button class="link-btn" id="openGuide" data-testid="open-guide">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h12a3 3 0 0 1 3 3v12H7a3 3 0 0 1-3-3V5z"/><path d="M4 5v12a3 3 0 0 0 3 3"/></svg>
+          <span>User Guide</span>
+        </button>
+        <button class="link-btn" id="openGrok" data-testid="open-grok">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3h7v7"/><path d="M21 3L11 13"/><path d="M5 5h6v2H7v10h10v-4h2v6H5z"/></svg>
+          <span>Open Grok</span>
+        </button>
+      </div>
     </div>
-    <div class="topright">
-      <select id="activeProject" data-testid="active-project-select"></select>
+    <div class="topbar-row">
+      <select id="activeProject" data-testid="active-project-select" class="pill-select"></select>
+      <select id="uiLang" data-testid="ui-lang" class="pill-select" disabled>
+        <option>English</option>
+      </select>
     </div>
   </header>
 
+  <!-- ===== Tabs ===== -->
   <nav class="tabs" role="tablist">
-    <button class="tab active" data-tab="generate" data-testid="tab-generate">Generate</button>
-    <button class="tab" data-tab="download" data-testid="tab-download">Download</button>
-    <button class="tab" data-tab="edit"     data-testid="tab-edit">Edit</button>
-    <button class="tab" data-tab="settings" data-testid="tab-settings">Settings</button>
+    <button class="tab active" data-tab="control" data-testid="tab-control">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h13"/><path d="M4 12h9"/><path d="M4 18h13"/><circle cx="19" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="19" cy="18" r="2"/></svg>
+      <span>Control</span>
+    </button>
+    <button class="tab" data-tab="setting" data-testid="tab-setting">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1A2 2 0 1 1 7 4.6l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      <span>Setting</span>
+    </button>
+    <button class="tab" data-tab="logs" data-testid="tab-logs">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.3-4.3"/></svg>
+      <span>Debug Logs</span>
+    </button>
   </nav>
 
   <main>
-    <!-- ============= GENERATE ============= -->
-    <section id="tab-generate" class="panel active">
+    <!-- =================== CONTROL =================== -->
+    <section id="tab-control" class="panel active">
+      <!-- Calibration banner -->
       <div id="calBanner" class="cal-banner" style="display:none" data-testid="cal-banner">
         <div class="cal-banner-body">
-          <strong>Calibration required</strong>
-          <small id="calBannerMsg">A required element was not found on the Grok page.</small>
+          <strong>Selectors not matching Grok yet</strong>
+          <small id="calBannerMsg">Open Diagnose Page or Calibration to bind the prompt input + Generate button to your live Grok page.</small>
         </div>
         <button class="primary" id="calBannerBtn" data-testid="cal-banner-btn">Calibrate now</button>
       </div>
-      <div class="grid-2">
-        <label class="field">
-          <span>Type</span>
-          <select id="gType" data-testid="generate-type">
-            <option value="text_to_video">Text → Video</option>
-            <option value="text_to_image">Text → Image</option>
-            <option value="image_to_video">Image → Video</option>
-            <option value="start_end_video">Start + End Frame Video</option>
-            <option value="prompt_image">Prompt + Image Upload</option>
+
+      <!-- Mode selector pills -->
+      <div class="mode-grid" data-testid="mode-grid">
+        <button class="mode-pill active" data-mode="text_to_video" data-testid="mode-text-to-video">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+          <span>Text to Video</span>
+        </button>
+        <button class="mode-pill" data-mode="start_end_video" data-testid="mode-frame-to-video">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18"/></svg>
+          <span>Frame to Video</span>
+        </button>
+        <button class="mode-pill" data-mode="ingredients_to_video" data-testid="mode-ingredients-to-video">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>
+          <span>Ingredients to Video</span>
+        </button>
+        <button class="mode-pill" data-mode="text_to_image" data-testid="mode-text-to-image">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15 9 22 9 16 14 18 21 12 17 6 21 8 14 2 9 9 9 12 2"/></svg>
+          <span>Text to Image</span>
+        </button>
+        <button class="mode-pill" data-mode="image_to_image" data-testid="mode-image-to-image">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 14l3-3 3 3 4-4 4 4"/></svg>
+          <span>Image to Image</span>
+        </button>
+      </div>
+
+      <!-- Concurrent prompts + delay -->
+      <div class="row-cards">
+        <div class="card">
+          <div class="card-title">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            <span>Concurrent Prompts</span>
+          </div>
+          <select id="concurrent" data-testid="concurrent">
+            <option value="1">1 prompt</option>
+            <option value="2">2 prompts</option>
+            <option value="3">3 prompts</option>
+            <option value="4">4 prompts</option>
           </select>
-        </label>
-        <label class="field">
-          <span>Method</span>
-          <select id="gMethod" data-testid="generate-method">
-            <option value="auto">Auto (recommended)</option>
-            <option value="native">Native Bulk</option>
-            <option value="multitab">Multi-Tab</option>
-            <option value="hybrid">Hybrid</option>
+          <small>Number of prompts to process simultaneously.</small>
+        </div>
+        <div class="card">
+          <div class="card-title">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
+            <span>Random Delay</span>
+          </div>
+          <div class="delay-row">
+            <input type="number" id="delayMin" min="0" value="20" data-testid="delay-min" />
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h14l-4-4"/><path d="M21 17H7l4 4"/></svg>
+            <input type="number" id="delayMax" min="0" value="30" data-testid="delay-max" />
+          </div>
+          <small>Random wait time (s) before handling the next prompt.</small>
+        </div>
+      </div>
+
+      <!-- Prompts -->
+      <div class="card">
+        <div class="card-title spread">
+          <span class="title-left">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="14" y2="18"/></svg>
+            <span>Prompts</span>
+          </span>
+          <span class="title-right">
+            <label class="upload-link" data-testid="upload-txt">
+              <input type="file" id="uploadTxt" accept=".txt" hidden />
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><polyline points="14 3 14 8 19 8"/></svg>
+              <span>Upload .txt file</span>
+            </label>
+            <label class="upload-link" data-testid="upload-xlsx">
+              <input type="file" id="uploadXlsx" accept=".csv,.xlsx" hidden />
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
+              <span>Upload .xlsx / .csv</span>
+            </label>
+          </span>
+        </div>
+        <textarea id="prompts" rows="9" data-testid="prompts" placeholder="Example:
+First long prompt.
+It can span multiple lines.
+
+Second prompt starts after a blank line.
+
+Third prompt."></textarea>
+        <small><i>Separate each prompt with a blank line.</i> · <b id="promptCount">0</b> prompts · <b id="dupCount">0</b> duplicates</small>
+      </div>
+
+      <!-- Outputs per prompt + folder -->
+      <div class="row-cards">
+        <div class="card">
+          <div class="card-title">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            <span>Outputs per Prompt</span>
+          </div>
+          <select id="outputsPerPrompt" data-testid="outputs">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="4">4</option>
           </select>
-        </label>
-        <label class="field">
-          <span>Batch Size</span>
-          <select id="gBatch" data-testid="generate-batch">
-            <option>2</option><option>5</option><option>10</option>
-            <option>20</option><option>50</option><option value="custom">Custom…</option>
-          </select>
-        </label>
-        <label class="field">
-          <span>Project name</span>
-          <input id="gProject" placeholder="e.g. NeonCity_Vol1" data-testid="generate-project" />
-        </label>
+          <small>Number of images/videos to create per prompt.</small>
+        </div>
+        <div class="card">
+          <div class="card-title">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+            <span>Save to folder</span>
+          </div>
+          <input type="text" id="saveFolder" data-testid="save-folder" placeholder="grok-folder-1" value="grok-folder-1"/>
+          <small>Subfolder for downloaded files.</small>
+        </div>
       </div>
 
-      <label class="field">
-        <span>Prompts (1 per line, up to 50 per batch)</span>
-        <textarea id="gPrompts" rows="8" placeholder="Paste your prompts here, one per line." data-testid="generate-prompts"></textarea>
-        <small class="hint"><b id="gPromptCount">0</b> prompts · <b id="gDupCount">0</b> duplicates</small>
-      </label>
+      <p class="hint">Customize aspect ratio, duration &amp; quantity in the Setting tab for more control.</p>
 
-      <div class="grid-2">
-        <label class="field">
-          <span>Start image(s)</span>
-          <input id="gStartImages" type="file" multiple accept="image/*" data-testid="generate-start-images" />
-        </label>
-        <label class="field">
-          <span>End image(s)</span>
-          <input id="gEndImages" type="file" multiple accept="image/*" data-testid="generate-end-images" />
+      <div class="toggle-row">
+        <label class="switch-row" data-testid="auto-rename-row">
+          <span>Auto change file name</span>
+          <span class="switch"><input type="checkbox" id="autoRename" checked data-testid="auto-rename"/><span class="slider"></span></span>
         </label>
       </div>
 
-      <div id="mappingPreview" class="mapping" data-testid="mapping-preview"></div>
-
-      <div class="row gap">
-        <button class="primary big" id="btnStart" data-testid="btn-start-bulk">Start Bulk</button>
-        <button class="ghost"        id="btnPause" data-testid="btn-pause">Pause</button>
-        <button class="ghost"        id="btnResume" data-testid="btn-resume">Resume</button>
-        <button class="ghost"        id="btnStop"  data-testid="btn-stop">Stop</button>
-      </div>
-      <div class="row gap">
-        <button class="ghost" id="btnRetry" data-testid="btn-retry-failed">Retry Failed</button>
-        <button class="ghost" id="btnSaveProj" data-testid="btn-save-project">Save Project</button>
-        <button class="ghost" id="btnDryRun" data-testid="btn-dry-run">Dry Run Test</button>
-        <button class="ghost" id="btnSmart"  data-testid="btn-smart-concurrency">Smart Concurrency</button>
-      </div>
-      <div class="row gap">
-        <button class="ghost" id="btnValidate" data-testid="btn-validate">Validate Selectors</button>
-        <button class="ghost" id="btnDiagnose" data-testid="btn-diagnose">Diagnose Page</button>
-        <button class="ghost" id="btnCalibrate" data-testid="btn-calibrate">Open Calibration</button>
+      <!-- Image inputs for image-based modes -->
+      <div class="row-cards" id="imageInputs" style="display:none">
+        <div class="card">
+          <div class="card-title"><span>Start frame / Reference images</span></div>
+          <input type="file" id="startImages" multiple accept="image/*" data-testid="start-images"/>
+          <small>One image per prompt (mapped in order).</small>
+        </div>
+        <div class="card" id="endImagesCard">
+          <div class="card-title"><span>End frame images</span></div>
+          <input type="file" id="endImages" multiple accept="image/*" data-testid="end-images"/>
+          <small>Used by Frame to Video.</small>
+        </div>
       </div>
 
-      <div id="diagOutput" class="status-pane" style="display:none;max-height:300px" data-testid="diag-output"></div>
+      <!-- Prompt queue -->
+      <div class="queue-block">
+        <div class="queue-head">
+          <span>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            PROMPT QUEUE
+          </span>
+          <span id="queueCount" class="queue-count">0 active</span>
+        </div>
+        <div id="queueList" class="queue-list" data-testid="queue-list"></div>
+      </div>
 
-      <div class="status-pane" id="genStatus" data-testid="gen-status"></div>
+      <div class="status-pane" id="controlStatus" data-testid="control-status"></div>
     </section>
 
-    <!-- ============= DOWNLOAD ============= -->
-    <section id="tab-download" class="panel">
-      <div class="grid-2">
-        <button class="primary" id="dlScanCurrent" data-testid="dl-scan-current">Scan Current Page</button>
-        <button class="primary" id="dlScanGrok"    data-testid="dl-scan-grok">Scan All Grok Tabs</button>
-        <button class="ghost"   id="dlFinished"    data-testid="dl-finished">Download Finished</button>
-        <button class="ghost"   id="dlRetryMiss"   data-testid="dl-retry-missing">Retry Missing</button>
-        <button class="ghost"   id="dlExportLog"   data-testid="dl-export-log">Export Download Log</button>
-        <button class="ghost"   id="dlOpenFolder"  data-testid="dl-open-folder">Open Downloads</button>
+    <!-- =================== SETTING =================== -->
+    <section id="tab-setting" class="panel">
+      <div class="card">
+        <div class="card-title"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="14" y2="18"/></svg><span>Default Mode</span></div>
+        <select id="setDefaultMode" data-testid="set-default-mode">
+          <option value="text_to_video">Text to Video</option>
+          <option value="start_end_video">Frame to Video</option>
+          <option value="ingredients_to_video">Ingredients to Video</option>
+          <option value="text_to_image">Text to Image</option>
+          <option value="image_to_image">Image to Image</option>
+        </select>
+        <small>Default mode when creating new videos.</small>
       </div>
-      <div class="status-pane" id="dlStatus" data-testid="dl-status"></div>
-      <div id="trackerList" class="tracker-list" data-testid="tracker-list"></div>
+      <div class="card">
+        <div class="card-title"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg><span>Image Model</span></div>
+        <select id="setImageModel" data-testid="set-image-model">
+          <option value="quality">Quality</option>
+          <option value="fast">Fast</option>
+        </select>
+        <small>Select the AI model to use for text-to-image generation.</small>
+      </div>
+      <div class="card">
+        <div class="card-title"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/></svg><span>Default Aspect Ratio</span></div>
+        <select id="setAspect" data-testid="set-aspect">
+          <option value="9:16">9:16 (Shorts/Reels)</option>
+          <option value="16:9">16:9 (Landscape)</option>
+          <option value="1:1">1:1 (Square)</option>
+        </select>
+        <small>Video / image frame ratio.</small>
+      </div>
+      <div class="card">
+        <div class="card-title"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polygon points="6 4 20 12 6 20 6 4"/></svg><span>Default Video Option</span></div>
+        <select id="setVideoOpt" data-testid="set-video-opt">
+          <option value="6s">6 seconds</option>
+          <option value="10s">10 seconds</option>
+          <option value="6s_concat">6s concat</option>
+          <option value="10s_concat">10s concat</option>
+        </select>
+        <small>Default duration setting for prompts. Last prompt will always use 6s or 10s.</small>
+      </div>
+      <div class="card">
+        <div class="card-title"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 14l3-3 3 3 4-4 4 4"/></svg><span>Default Image Mode Option</span></div>
+        <select id="setImageMode" data-testid="set-image-mode">
+          <option value="new_image">New Image</option>
+          <option value="edit_image">Edit Image</option>
+        </select>
+        <small>Default input mode for image prompts. Last prompt will always use New Image.</small>
+      </div>
+      <div class="card">
+        <div class="card-title"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.5 15a9 9 0 1 1-2.1-9.4L23 10"/></svg><span>Max Retries on Failure</span></div>
+        <div class="num-stepper">
+          <button id="retriesMinus" data-testid="retries-minus">−</button>
+          <input type="number" id="setRetries" min="1" max="20" value="5" data-testid="set-retries"/>
+          <button id="retriesPlus" data-testid="retries-plus">+</button>
+        </div>
+        <small>Number of times to retry video generation if it fails (1–20).</small>
+      </div>
+      <div class="card">
+        <div class="card-title"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>Auto Download Quality (Video)</span></div>
+        <select id="setVideoQuality" data-testid="set-video-quality">
+          <option value="480p">480p</option>
+          <option value="720p" selected>720p</option>
+          <option value="1080p">1080p</option>
+        </select>
+        <small>Select the video quality for automatic downloads.</small>
+      </div>
+      <div class="card">
+        <div class="card-title"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>Auto Download Quality (Image)</span></div>
+        <select id="setImageQuality" data-testid="set-image-quality">
+          <option value="1k" selected>1k</option>
+          <option value="2k">2k</option>
+          <option value="4k">4k</option>
+        </select>
+        <small>Select the image quality for automatic downloads.</small>
+      </div>
+      <div class="card">
+        <div class="card-title"><span>Calibration</span></div>
+        <div class="row gap">
+          <button class="ghost" id="calOpen" data-testid="cal-open">Open Calibration</button>
+          <button class="ghost" id="calReset" data-testid="cal-reset">Reset Calibration</button>
+        </div>
+        <small>Bind Grok's real prompt input and Generate button if the defaults miss.</small>
+      </div>
+      <div class="card">
+        <div class="card-title"><span>Projects</span></div>
+        <div class="row gap">
+          <button class="ghost" id="projExport" data-testid="proj-export">Export Projects</button>
+          <button class="ghost" id="projImport" data-testid="proj-import">Import Projects</button>
+          <input id="hiddenImport" type="file" accept="application/json" style="display:none" />
+        </div>
+      </div>
+
+      <div class="row gap save-row">
+        <button class="primary" id="saveSettings" data-testid="save-settings">Save Settings</button>
+      </div>
+      <div class="status-pane" id="settingStatus" data-testid="setting-status"></div>
     </section>
 
-    <!-- ============= EDIT ============= -->
-    <section id="tab-edit" class="panel">
-      <label class="field">
-        <span>Choose videos</span>
-        <input id="edFiles" type="file" multiple accept="video/*" data-testid="edit-files" />
-      </label>
-      <label class="field">
-        <span>Project name</span>
-        <input id="edProject" placeholder="edited" data-testid="edit-project" />
-      </label>
-      <div class="grid-2">
-        <label class="field">
-          <span>Preset</span>
-          <select id="edPreset" data-testid="edit-preset">
-            <option value="9:16">Vertical 9:16</option>
-            <option value="1:1">Square 1:1</option>
-            <option value="16:9">Landscape 16:9</option>
-            <option value="custom">Custom</option>
-          </select>
-        </label>
-        <label class="field">
-          <span>Zoom</span>
-          <select id="edZoom" data-testid="edit-zoom">
-            <option value="0">None</option>
-            <option value="3">3%</option>
-            <option value="5" selected>5%</option>
-            <option value="8">8%</option>
-          </select>
-        </label>
-        <label class="field">
-          <span>Sharpen</span>
-          <select id="edSharpen" data-testid="edit-sharpen">
-            <option value="off">Off</option>
-            <option value="low" selected>Low</option>
-            <option value="medium">Medium</option>
-          </select>
-        </label>
-        <label class="field">
-          <span>Brightness</span>
-          <input id="edBrightness" type="range" min="-30" max="30" value="0" data-testid="edit-brightness" />
-        </label>
-        <label class="field">
-          <span>Contrast</span>
-          <input id="edContrast" type="range" min="-30" max="30" value="0" data-testid="edit-contrast" />
-        </label>
-        <label class="field">
-          <span>Trim start (s)</span>
-          <input id="edTrimStart" type="number" min="0" step="0.1" value="0" data-testid="edit-trim-start" />
-        </label>
-        <label class="field">
-          <span>Trim end (s, 0=none)</span>
-          <input id="edTrimEnd" type="number" min="0" step="0.1" value="0" data-testid="edit-trim-end" />
-        </label>
-        <label class="field">
-          <span>Border</span>
-          <select id="edBorder" data-testid="edit-border">
-            <option value="0">None</option>
-            <option value="4">Thin</option>
-            <option value="10">Medium</option>
-          </select>
-        </label>
-        <label class="field">
-          <span>Fade</span>
-          <select id="edFade" data-testid="edit-fade">
-            <option value="0">None</option>
-            <option value="0.4">0.4s</option>
-            <option value="0.8">0.8s</option>
-          </select>
-        </label>
-        <label class="field">
-          <span>Overlay text (optional)</span>
-          <input id="edOverlay" placeholder="" data-testid="edit-overlay" />
-        </label>
-      </div>
-
+    <!-- =================== DEBUG LOGS =================== -->
+    <section id="tab-logs" class="panel">
       <div class="row gap">
-        <button class="primary big" id="edPreview" data-testid="edit-preview">Preview One</button>
-        <button class="primary"     id="edExport"  data-testid="edit-export">Export Batch</button>
-        <button class="ghost"       id="edCancel"  data-testid="edit-cancel">Cancel</button>
-        <button class="ghost"       id="edOpen"    data-testid="edit-open">Open Edited Files</button>
+        <button class="primary" id="btnValidate" data-testid="btn-validate">Validate Selectors</button>
+        <button class="primary" id="btnDiagnose" data-testid="btn-diagnose">Diagnose Page</button>
+        <button class="ghost"   id="btnRefreshLogs" data-testid="btn-refresh-logs">Refresh</button>
+        <button class="ghost"   id="btnExportLogs"  data-testid="btn-export-logs">Export</button>
+        <button class="ghost"   id="btnClearLogs"   data-testid="btn-clear-logs">Clear</button>
       </div>
-
-      <canvas id="edCanvas" width="540" height="960" data-testid="edit-canvas"></canvas>
-      <div class="status-pane" id="edStatus" data-testid="edit-status"></div>
-    </section>
-
-    <!-- ============= SETTINGS ============= -->
-    <section id="tab-settings" class="panel">
-      <div class="grid-2">
-        <label class="field">
-          <span>Default Type</span>
-          <select id="sDefType" data-testid="settings-default-type">
-            <option value="text_to_video">Text → Video</option>
-            <option value="text_to_image">Text → Image</option>
-            <option value="image_to_video">Image → Video</option>
-            <option value="start_end_video">Start + End Frame Video</option>
-            <option value="prompt_image">Prompt + Image Upload</option>
-          </select>
-        </label>
-        <label class="field">
-          <span>Default Method</span>
-          <select id="sDefMethod" data-testid="settings-default-method">
-            <option value="auto">Auto</option>
-            <option value="native">Native Bulk</option>
-            <option value="multitab">Multi-Tab</option>
-            <option value="hybrid">Hybrid</option>
-          </select>
-        </label>
-        <label class="field"><span>Default Batch</span>
-          <input id="sDefBatch" type="number" min="1" max="50" data-testid="settings-default-batch" /></label>
-        <label class="field"><span>Default Project name</span>
-          <input id="sDefProject" data-testid="settings-default-project" /></label>
-        <label class="field"><span>Delay (ms)</span>
-          <input id="sDelay" type="number" min="0" data-testid="settings-delay" /></label>
-        <label class="field"><span>Timeout (ms)</span>
-          <input id="sTimeout" type="number" min="0" data-testid="settings-timeout" /></label>
-        <label class="field"><span>Retries</span>
-          <input id="sRetries" type="number" min="0" data-testid="settings-retries" /></label>
-        <label class="field"><span>Workers (multi-tab)</span>
-          <input id="sWorkers" type="number" min="1" max="6" data-testid="settings-workers" /></label>
-      </div>
-
-      <div class="grid-2 toggles">
-        <label class="check"><input type="checkbox" id="sSmart" data-testid="settings-smart"/> Smart Concurrency</label>
-        <label class="check"><input type="checkbox" id="sAuto"  data-testid="settings-auto"/> Auto Mode</label>
-        <label class="check"><input type="checkbox" id="sDry"   data-testid="settings-dryrun"/> Dry Run</label>
-        <label class="check"><input type="checkbox" id="sAutoDl" data-testid="settings-auto-download"/> Auto-Download</label>
-        <label class="check"><input type="checkbox" id="sRename" data-testid="settings-rename"/> Rename Files</label>
-        <label class="check"><input type="checkbox" id="sDedup"  data-testid="settings-dedup"/> Avoid Duplicates</label>
-        <label class="check"><input type="checkbox" id="sScanAll" data-testid="settings-scan-all"/> Scan All Tabs</label>
-        <label class="check"><input type="checkbox" id="sMobile" data-testid="settings-mobile"/> Mobile Lightweight</label>
-        <label class="check"><input type="checkbox" id="sLogs"   data-testid="settings-logs"/> Enable Logs</label>
-      </div>
-
-      <div class="row gap">
-        <button class="primary" id="sSave" data-testid="settings-save">Save Settings</button>
-        <button class="ghost"   id="calOpenGrok" data-testid="cal-open-grok">Calibrate Grok</button>
-        <button class="ghost"   id="calReset"    data-testid="cal-reset">Reset Calibration</button>
-        <button class="ghost"   id="projExport"  data-testid="proj-export">Export Projects</button>
-        <button class="ghost"   id="projImport"  data-testid="proj-import">Import Projects</button>
-        <button class="ghost"   id="logExport"   data-testid="log-export">Export Logs</button>
-        <button class="ghost"   id="logClear"    data-testid="log-clear">Clear Logs</button>
-      </div>
-      <div class="status-pane" id="sStatus" data-testid="settings-status"></div>
+      <div class="status-pane" id="diagOutput" data-testid="diag-output" style="max-height:280px"></div>
+      <div class="status-pane" id="logsView"   data-testid="logs-view"  style="max-height:340px"></div>
     </section>
   </main>
 
-  <footer class="bottombar">
-    <small id="bottomLog" data-testid="bottom-log">Ready.</small>
+  <!-- ===== Bottom action bar (Control only) ===== -->
+  <footer class="bottombar" id="bottomBar">
+    <button class="ghost flag" id="btnReport" data-testid="btn-report">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V4"/><path d="M4 4l11 0 -2 3 2 4 -11 0"/></svg>
+      Report Bug
+    </button>
+    <button class="ghost" id="btnClear" data-testid="btn-clear">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.5 15a9 9 0 1 1-2.1-9.4L23 10"/></svg>
+      Clear
+    </button>
+    <button class="primary big" id="btnRun" data-testid="btn-run">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+      Run
+    </button>
   </footer>
-
-  <input id="hiddenImport" type="file" accept="application/json" style="display:none" />
 
   <script type="module" src="sidepanel.js"></script>
 </body>

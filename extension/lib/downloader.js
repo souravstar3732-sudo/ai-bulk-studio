@@ -1,15 +1,11 @@
 // lib/downloader.js — chrome.downloads with naming, folders, dedup.
-import { Storage } from "./storage.js";
-
 function sanitize(name) {
   return (name || "").replace(/[\\\/:*?"<>|]+/g, "_").replace(/\s+/g, "_").slice(0, 80);
 }
-
 function extFromUrl(url, fallback) {
   try {
     const u = new URL(url);
-    const path = u.pathname;
-    const m = path.match(/\.([a-zA-Z0-9]{2,5})(?:$|\?)/);
+    const m = u.pathname.match(/\.([a-zA-Z0-9]{2,5})(?:$|\?)/);
     if (m) return m[1].toLowerCase();
   } catch (e) {}
   return fallback || "bin";
@@ -17,19 +13,24 @@ function extFromUrl(url, fallback) {
 
 export const Downloader = {
   buildName(project, item) {
-    const proj = sanitize(project?.name || "project");
-    const platform = sanitize(project?.platform || "ai");
-    const method = sanitize(project?.method || "native");
+    const folder = sanitize(project?.saveFolder || project?.name || "project");
     const idx = String(item.idx || "").padStart(3, "0") || "000";
     let ext = "mp4";
     if (item.kind === "image") ext = "png";
     else if (item.mediaUrl) ext = extFromUrl(item.mediaUrl, item.kind === "image" ? "png" : "mp4");
-    return `${proj}_${platform}_${method}_${idx}.${ext}`;
+    // If autoRename disabled, keep platform original filename when we can
+    if (project && project.autoRename === false && item.mediaUrl) {
+      try {
+        const u = new URL(item.mediaUrl);
+        const base = u.pathname.split("/").pop() || "";
+        if (base) return sanitize(base);
+      } catch (e) {}
+    }
+    return `${folder}_${idx}.${ext}`;
   },
   buildFolder(project) {
-    if (!project) return "AI_Content_Hub";
-    const platform = project.platform === "flow" ? "Flow" : "Grok";
-    return `AI_Content_Hub/${platform}/${sanitize(project.name || "Project")}`;
+    const sub = sanitize(project?.saveFolder || project?.name || "grok-folder-1");
+    return `AI_Content_Hub/Grok/${sub}`;
   },
   async downloadOne({ url, name, folder }) {
     if (!url) return { ok: false, error: "no url" };
@@ -37,10 +38,7 @@ export const Downloader = {
     try {
       const id = await new Promise((resolve, reject) => {
         chrome.downloads.download({
-          url,
-          filename,
-          conflictAction: "uniquify",
-          saveAs: false
+          url, filename, conflictAction: "uniquify", saveAs: false
         }, (downloadId) => {
           if (chrome.runtime.lastError) return reject(chrome.runtime.lastError);
           resolve(downloadId);
@@ -48,7 +46,7 @@ export const Downloader = {
       });
       return { ok: true, id, filename };
     } catch (e) {
-      // Some mobile builds reject sub-folders. Retry flat.
+      // Mobile builds may reject sub-folders. Retry flat.
       try {
         const id2 = await new Promise((resolve, reject) => {
           chrome.downloads.download({

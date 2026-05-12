@@ -52,7 +52,7 @@ chrome.runtime.onInstalled.addListener(async () => {
     await Storage.set({ selectors: DEFAULT_SELECTORS });
     Logger.info("Selectors migrated to version " + DEFAULT_SELECTORS._version);
   }
-  Logger.info("Installed v1.0.3 (Grok-only)");
+  Logger.info("Installed v1.1.0 (Grok-only)");
   try {
     if (chrome.sidePanel && chrome.sidePanel.setPanelBehavior) {
       await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
@@ -193,10 +193,22 @@ async function startGeneration(payload) {
   project.platform = PLATFORM;
   project.startImages = payload.startImages || [];
   project.endImages   = payload.endImages   || [];
+  project.delayMinMs  = Number(payload.delayMinMs ?? 0);
+  project.delayMaxMs  = Math.max(project.delayMinMs, Number(payload.delayMaxMs ?? project.delayMinMs));
+  project.outputsPerPrompt = Number(payload.outputsPerPrompt || 1);
+  project.saveFolder  = payload.saveFolder || project.name || "grok-folder-1";
+  project.autoRename  = payload.autoRename !== false;
+  project.aspectRatio = payload.aspectRatio || project.aspectRatio || "9:16";
+  project.videoOption = payload.videoOption || project.videoOption || "10s";
+  project.imageModel  = payload.imageModel  || project.imageModel  || "quality";
+  project.imageMode   = payload.imageMode   || project.imageMode   || "new_image";
+  project.videoQuality = payload.videoQuality || project.videoQuality || "720p";
+  project.imageQuality = payload.imageQuality || project.imageQuality || "1k";
+  project.retries     = Number(payload.retries || project.retries || 5);
   project.updatedAt = Date.now();
 
   await Project.save(project);
-  Logger.info(`Generation start: project=${project.name} method=${project.method} batch=${project.batchSize} prompts=${prompts.length}`);
+  Logger.info(`Generation start: project=${project.name} method=${project.method} batch=${project.batchSize} prompts=${prompts.length} folder=${project.saveFolder}`);
 
   pump().catch(e => Logger.error("pump", e));
   return { ok: true, projectId: project.id, duplicates: dups, dryRun: !!payload.dryRun };
@@ -276,7 +288,11 @@ async function pump() {
   }
 
   if (state.paused || state.stopped) return;
-  await sleep(settings.delayMs || 1200);
+  // Random delay between min and max
+  const minMs = Number(project.delayMinMs ?? settings.delayMs ?? 1200);
+  const maxMs = Math.max(minMs, Number(project.delayMaxMs ?? settings.delayMs ?? 1200));
+  const wait = minMs + Math.random() * (maxMs - minMs);
+  await sleep(wait);
   pump();
 }
 

@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Grok Bulk Studio",
   "short_name": "Grok Bulk Studio",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "description": "Bulk generate, download, and batch edit AI videos/images from Grok Imagine. Mobile-friendly side panel UI.",
   "icons": {
     "16": "icons/icon16.png",
