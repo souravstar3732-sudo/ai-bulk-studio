@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI Bulk Studio</title>
+  <title>Grok Bulk Studio</title>
   <link rel="stylesheet" href="sidepanel.css" />
 </head>
 <body>
   <header class="topbar">
     <div class="brand">
       <span class="dot"></span>
-      <span>AI Bulk Studio</span>
+      <span>Grok Bulk Studio</span>
     </div>
     <div class="topright">
       <select id="activeProject" data-testid="active-project-select"></select>
@@ -30,18 +30,11 @@
       <div id="calBanner" class="cal-banner" style="display:none" data-testid="cal-banner">
         <div class="cal-banner-body">
           <strong>Calibration required</strong>
-          <small id="calBannerMsg">A required element was not found on the page.</small>
+          <small id="calBannerMsg">A required element was not found on the Grok page.</small>
         </div>
         <button class="primary" id="calBannerBtn" data-testid="cal-banner-btn">Calibrate now</button>
       </div>
       <div class="grid-2">
-        <label class="field">
-          <span>Platform</span>
-          <select id="gPlatform" data-testid="generate-platform">
-            <option value="grok">Grok Imagine</option>
-            <option value="flow">Google Flow / Veo</option>
-          </select>
-        </label>
         <label class="field">
           <span>Type</span>
           <select id="gType" data-testid="generate-type">
@@ -68,12 +61,11 @@
             <option>20</option><option>50</option><option value="custom">Custom…</option>
           </select>
         </label>
+        <label class="field">
+          <span>Project name</span>
+          <input id="gProject" placeholder="e.g. NeonCity_Vol1" data-testid="generate-project" />
+        </label>
       </div>
-
-      <label class="field">
-        <span>Project name</span>
-        <input id="gProject" placeholder="e.g. NeonCity_Vol1" data-testid="generate-project" />
-      </label>
 
       <label class="field">
         <span>Prompts (1 per line, up to 50 per batch)</span>
@@ -122,7 +114,6 @@
       <div class="grid-2">
         <button class="primary" id="dlScanCurrent" data-testid="dl-scan-current">Scan Current Page</button>
         <button class="primary" id="dlScanGrok"    data-testid="dl-scan-grok">Scan All Grok Tabs</button>
-        <button class="primary" id="dlScanFlow"    data-testid="dl-scan-flow">Scan All Flow Tabs</button>
         <button class="ghost"   id="dlFinished"    data-testid="dl-finished">Download Finished</button>
         <button class="ghost"   id="dlRetryMiss"   data-testid="dl-retry-missing">Retry Missing</button>
         <button class="ghost"   id="dlExportLog"   data-testid="dl-export-log">Export Download Log</button>
@@ -222,12 +213,6 @@
     <section id="tab-settings" class="panel">
       <div class="grid-2">
         <label class="field">
-          <span>Default Platform</span>
-          <select id="sDefPlatform" data-testid="settings-default-platform">
-            <option value="grok">Grok</option><option value="flow">Flow</option>
-          </select>
-        </label>
-        <label class="field">
           <span>Default Type</span>
           <select id="sDefType" data-testid="settings-default-type">
             <option value="text_to_video">Text → Video</option>
@@ -275,7 +260,6 @@
       <div class="row gap">
         <button class="primary" id="sSave" data-testid="settings-save">Save Settings</button>
         <button class="ghost"   id="calOpenGrok" data-testid="cal-open-grok">Calibrate Grok</button>
-        <button class="ghost"   id="calOpenFlow" data-testid="cal-open-flow">Calibrate Flow</button>
         <button class="ghost"   id="calReset"    data-testid="cal-reset">Reset Calibration</button>
         <button class="ghost"   id="projExport"  data-testid="proj-export">Export Projects</button>
         <button class="ghost"   id="projImport"  data-testid="proj-import">Import Projects</button>

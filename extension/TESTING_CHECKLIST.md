@@ -1,41 +1,40 @@
-# Testing Checklist
-
-Run through each test before considering the extension ready for daily use. **Acceptance** = matches the spec's 13 acceptance tests.
+# Testing Checklist (Grok-only build)
 
 ## A. Install & boot
 - [ ] Loads with no console errors on `chrome://extensions` (Service worker → inspect).
-- [ ] Icon visible. Popup opens.
-- [ ] Side panel opens. All 4 tabs visible: Generate / Download / Edit / Settings.
-- [ ] Mobile (Quetta/Kiwi): all buttons large, no overflow on 360px width.
+- [ ] Popup opens; **Open Side Panel** works (or opens sidepanel page on mobile).
+- [ ] Side panel shows 4 tabs: Generate / Download / Edit / Settings.
+- [ ] Mobile (Quetta/Kiwi): all buttons large, no overflow at 360 px.
 
-## B. Acceptance Tests (spec §FINAL)
+## B. Reachability
+- [ ] On a non-Grok tab: tap **Validate Selectors** → extension opens or focuses a Grok tab, waits for load, then reports either ✓ found selectors OR a clear "calibrate" message. No "Receiving end" error.
+- [ ] **Diagnose Page** dumps textareas/buttons/file inputs/videos with selectors.
 
-1. **Grok Native Bulk** — Generate tab → Platform=Grok, Type=Text→Video, Method=Native, Batch=5, paste 5 prompts → Start Bulk → page receives all 5; multiple generations begin; result cards appear in the tracker. *Expected*: status moves pending → submitted → generating → completed.
-2. **Grok Download** — On a Grok page with finished results → Download tab → Scan Current Page → files saved with `<project>_grok_<method>_001.mp4` ordering. Folder = `AI_Content_Hub/Grok/<Project>/` (or flat on mobile).
-3. **Manual Grok Capture** — Generate manually in Grok (without extension) → Download tab → Scan Current Page → finished media is captured and downloaded. Tracker shows `capturedManually: true`.
-4. **Flow/Veo Native Bulk** — same as test 1 with Platform=Flow.
-5. **Flow/Veo Download** — same as test 2 with Platform=Flow.
-6. **Manual Flow Capture** — same as test 3 with Platform=Flow.
-7. **Image-to-video mapping** — Type=Image→Video, upload 2 images + 2 prompts → Prompt 1 generates with image 1, Prompt 2 with image 2. Verify in mapping preview.
-8. **Batch splitter** — Paste 100 prompts, Batch=50 → background splits into 2 batches; final filenames span `001`–`100` continuously.
-9. **Edit** — Edit tab → pick 3 videos → Preset 9:16, Zoom 5%, Sharpen Low → Export Batch → 3 files `<project>_edited_001.webm` … `_003.webm` saved.
-10. **Recovery** — During a batch refresh the Grok tab → reopen the extension → active project still present, tracker statuses preserved, Resume continues remaining prompts.
-11. **Calibration reset/test** — Settings → Reset Calibration → defaults loaded. Open calibration page → Pick on Grok prompt input → Test shows "FOUND".
-12. **Dry Run** — Generate tab → Dry Run Test → submits no actual generations; tracker stays `pending`; status pane logs OK.
-13. **Duplicate prompt warning** — Paste 5 prompts where 2 are identical → status pane and `gDupCount` show "1 duplicates"; the duplicate index is logged after Start Bulk.
+## C. Generation
+1. **Grok Native Bulk** — paste 5 prompts → Start Bulk → either pre-flight pauses with calibration banner (default selectors miss) OR submits all 5 to Grok. After calibration, retry → multiple generations begin.
+2. **Manual capture** — generate manually in Grok, then Download tab → Scan Current Page → finished media captured & downloaded.
+3. **Image-to-video mapping** — Type=Image→Video, upload 2 images + 2 prompts → Prompt 1 with image 1, Prompt 2 with image 2.
+4. **Batch splitter** — 100 prompts, batch 50 → 2 batches; filenames `001`–`100`.
+5. **Recovery** — refresh the Grok tab mid-batch → reopen side panel → active project preserved → Resume continues.
+6. **Duplicate warning** — paste 5 prompts with 2 identical → `gDupCount` shows 1.
+7. **Dry Run** — submits no actual generations; tracker stays pending.
 
-## C. Robustness
-- [ ] Login screen detected → extension auto-pauses and shows reason.
+## D. Calibration
+- [ ] **Open Calibration** → pick prompt input → Test FOUND → Save All.
+- [ ] **Reset Calibration** restores default selectors.
+- [ ] Export/import calibration JSON works.
+
+## E. Edit
+- [ ] Pick 3 videos → Preset 9:16, Zoom 5%, Sharpen Low → Export Batch → 3 files `<project>_edited_001.webm`…`_003.webm` saved.
+
+## F. Robustness
+- [ ] Login screen detected on Grok → extension auto-pauses with reason.
 - [ ] CAPTCHA detected → auto-pauses.
-- [ ] Quota / upgrade screen detected → auto-pauses.
-- [ ] Rate limit text detected → auto-pauses.
-- [ ] Layout change (selector missing > 10s) → warns + pauses + suggests recalibration.
+- [ ] Quota / upgrade screen → auto-pauses.
+- [ ] Rate limit → auto-pauses.
+- [ ] Layout change (selector missing > 10 s) → warns + pauses + suggests recalibration.
 
-## D. Performance (mobile Quetta)
-- [ ] 50 prompts with 5 in batch native → completes without browser OOM.
-- [ ] Edit Export 1 × 30s clip → completes in reasonable time (≤ video length × 3).
-
-## E. Data
-- [ ] Project Export → JSON file saved. Re-import restores prompts + tracker.
-- [ ] Download Log Export → CSV with idx/prompt/status/filename/fingerprint/mediaUrl rows.
-- [ ] Logs Export → text file. Clear Logs empties the log store.
+## G. Data
+- [ ] Project Export → JSON. Import restores prompts + tracker.
+- [ ] Download Log Export → CSV.
+- [ ] Logs Export → text file. Clear Logs empties the store.

@@ -1,6 +1,6 @@
-// AI Bulk Studio — Background Service Worker (Manifest V3, ES module)
-// Orchestrates: projects, prompts/result tracker, downloads, tab fanout,
-// content-script command bus, calibration store, logs, recovery.
+// Grok Bulk Studio — Background Service Worker (MV3 module)
+// Orchestrates: projects, prompts/result tracker, downloads, content-script bus,
+// calibration store, logs, recovery. Grok-only build.
 
 import { Storage }   from "../lib/storage.js";
 import { Logger }    from "../lib/logger.js";
@@ -9,6 +9,9 @@ import { Tracker }   from "../lib/tracker.js";
 import { Downloader } from "../lib/downloader.js";
 import { DEFAULT_SELECTORS } from "../lib/selectors.js";
 
+const PLATFORM = "grok";
+const GROK_URL_PATTERNS = ["*://grok.com/*","*://*.grok.com/*","*://x.com/i/grok*","*://x.com/grok*"];
+
 // ---------- Boot ----------
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));
@@ -16,7 +19,7 @@ self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));
 chrome.runtime.onInstalled.addListener(async () => {
   await Storage.initDefaults({
     settings: {
-      defaultPlatform: "grok",
+      defaultPlatform: PLATFORM,
       defaultType: "text_to_video",
       defaultMethod: "auto",
       defaultBatch: 5,
@@ -49,8 +52,7 @@ chrome.runtime.onInstalled.addListener(async () => {
     await Storage.set({ selectors: DEFAULT_SELECTORS });
     Logger.info("Selectors migrated to version " + DEFAULT_SELECTORS._version);
   }
-  Logger.info("Installed v1.0.0");
-  // Enable side panel auto-open on action click on supported Chrome
+  Logger.info("Installed v1.0.3 (Grok-only)");
   try {
     if (chrome.sidePanel && chrome.sidePanel.setPanelBehavior) {
       await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
@@ -119,7 +121,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         case "DOWNLOAD_LOG_EXPORT":
           sendResponse({ ok: true, log: await Project.exportDownloadLog() }); break;
         case "OPEN_DOWNLOADS":
-          chrome.downloads.showDefaultFolder();
+          try { chrome.downloads.showDefaultFolder(); } catch (e) {}
           sendResponse({ ok: true }); break;
 
         case "LOG_GET":
@@ -132,18 +134,17 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           sendResponse({ ok: true }); break;
 
         case "CALIBRATE_OPEN":
-          chrome.tabs.create({ url: chrome.runtime.getURL("pages/calibration.html") + "?platform=" + (msg.platform || "grok") });
+          chrome.tabs.create({ url: chrome.runtime.getURL("pages/calibration.html") });
           sendResponse({ ok: true }); break;
 
         case "CS_REPORT":
-          // Content scripts report card statuses, layout changes, errors
           await handleCsReport(msg.payload, sender);
           sendResponse({ ok: true }); break;
 
         case "DIAGNOSE_PAGE":
-          sendResponse(await diagnosePage(msg.platform)); break;
+          sendResponse(await diagnosePage()); break;
         case "VALIDATE_SELECTORS":
-          sendResponse(await validateSelectors(msg.platform)); break;
+          sendResponse(await validateSelectors()); break;
 
         case "PING":
           sendResponse({ ok: true, pong: Date.now() }); break;
@@ -156,7 +157,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       sendResponse({ ok: false, error: String(e && e.message || e) });
     }
   })();
-  return true; // async
+  return true;
 });
 
 // ---------- Generation State Machine ----------
@@ -164,23 +165,19 @@ const state = {
   running: false,
   paused: false,
   stopped: false,
-  projectId: null,
-  currentBatch: 0,
-  workerTabs: []
+  projectId: null
 };
 
 async function startGeneration(payload) {
-  // payload contains the project fields flat plus prompts/images/dryRun
   payload = payload || {};
+  payload.platform = PLATFORM;
   const project = await Project.upsertActive(payload);
   state.running = true; state.paused = false; state.stopped = false;
   state.projectId = project.id;
 
-  // Build tracker entries (one per prompt) — preserve order
   const prompts = (payload.prompts || []).map(s => (s || "").trim()).filter(Boolean);
   if (!prompts.length) return { ok: false, error: "No prompts provided." };
 
-  // Duplicate warning
   const seen = new Set();
   const dups = [];
   prompts.forEach((p, i) => {
@@ -193,15 +190,14 @@ async function startGeneration(payload) {
   project.method = payload.method || project.method || "auto";
   project.generationType = payload.generationType || project.generationType || "text_to_video";
   project.batchSize = payload.batchSize || project.batchSize || 5;
-  project.platform = payload.platform || project.platform || "grok";
+  project.platform = PLATFORM;
   project.startImages = payload.startImages || [];
   project.endImages   = payload.endImages   || [];
   project.updatedAt = Date.now();
 
   await Project.save(project);
-  Logger.info(`Generation start: project=${project.name} platform=${project.platform} method=${project.method} batch=${project.batchSize} prompts=${prompts.length}`);
+  Logger.info(`Generation start: project=${project.name} method=${project.method} batch=${project.batchSize} prompts=${prompts.length}`);
 
-  // Run pump (non-blocking) — sendResponse must return quickly.
   pump().catch(e => Logger.error("pump", e));
   return { ok: true, projectId: project.id, duplicates: dups, dryRun: !!payload.dryRun };
 }
@@ -226,17 +222,22 @@ async function pump() {
   const batchSize = Math.min(project.batchSize || 5, 50);
   const batch = remaining.slice(0, batchSize);
 
-  // Find or create platform tab
-  const tab = await ensurePlatformTab(project.platform);
+  const tab = await ensureGrokTab();
+  const ready = await waitForCs(tab.id, 25000);
+  if (!ready) {
+    state.paused = true;
+    notifyUi({
+      type: "PAUSE_REASON",
+      reason: "needs_calibration",
+      message: "Grok tab opened but content script did not load. Make sure you're at grok.com (logged in), then click Resume."
+    });
+    return;
+  }
 
-  // Wait until content script ready
-  await waitForCs(tab.id, project.platform, 25000);
-
-  // Dispatch batch to content script
   const csRes = await safeSendCs(tab.id, {
     type: "RUN_BATCH",
     payload: {
-      mode: method, // "native", "multitab", "hybrid"
+      mode: method,
       generationType: project.generationType,
       prompts: batch.map(b => ({ idx: b.idx, prompt: b.prompt })),
       startImages: project.startImages,
@@ -246,8 +247,6 @@ async function pump() {
   }, 60000);
 
   if (!csRes || !csRes.ok) {
-    // Mark as failed for this batch. If the failure is a selector/calibration
-    // issue, pause the whole job and surface a clear "calibrate now" message.
     const reason = (csRes && csRes.error) || "batch dispatch failed";
     const needsCal = /not\s*found|prompt input|generate button|run all|selector/i.test(reason);
     Logger.warn("Native batch failed: " + reason);
@@ -264,20 +263,18 @@ async function pump() {
       notifyUi({
         type: "PAUSE_REASON",
         reason: "needs_calibration",
-        platform: project.platform,
-        message: `Could not find a key element on ${project.platform === "flow" ? "Google Flow" : "Grok"} (${reason}). Open Settings → Calibrate ${project.platform === "flow" ? "Flow" : "Grok"} to fix.`
+        platform: PLATFORM,
+        message: `Could not find a key element on Grok (${reason}). Open Settings → Calibrate Grok to fix.`
       });
-      return; // stop pump until user resumes after calibration
+      return;
     }
   } else {
-    // CS reports per-card statuses via CS_REPORT. Optimistically mark submitted.
     for (const item of batch) {
       Tracker.update(project.tracker, item.idx, { status: "submitted", tabId: tab.id });
     }
     await Project.save(project);
   }
 
-  // Wait small delay then continue if more
   if (state.paused || state.stopped) return;
   await sleep(settings.delayMs || 1200);
   pump();
@@ -287,8 +284,6 @@ function autoRouteMethod(project, settings) {
   const m = (project.method || "auto").toLowerCase();
   if (m !== "auto") return m;
   if (!settings.autoMode) return "native";
-  // Default heuristics: native is most reliable when supported
-  if ((project.batchSize || 5) <= 5) return "native";
   if ((project.batchSize || 5) <= 25) return "native";
   return "hybrid";
 }
@@ -309,15 +304,28 @@ async function retryFailed() {
 }
 
 // ---------- Tabs & Content Script Helpers ----------
-async function ensurePlatformTab(platform) {
-  const urlMatch = platform === "flow" ? "*://labs.google/*" : "*://grok.com/*";
-  const tabs = await chrome.tabs.query({ url: urlMatch });
+async function ensureGrokTab() {
+  const tabs = await chrome.tabs.query({ url: GROK_URL_PATTERNS });
   if (tabs.length) {
     await chrome.tabs.update(tabs[0].id, { active: true });
-    return tabs[0];
+    // Wait briefly if the tab is still loading
+    await waitTabComplete(tabs[0].id, 10000);
+    return await chrome.tabs.get(tabs[0].id);
   }
-  const url = platform === "flow" ? "https://labs.google/flow" : "https://grok.com/imagine";
-  return await chrome.tabs.create({ url, active: true });
+  const created = await chrome.tabs.create({ url: "https://grok.com/imagine", active: true });
+  await waitTabComplete(created.id, 25000);
+  return await chrome.tabs.get(created.id);
+}
+
+function waitTabComplete(tabId, maxMs) {
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = () => { if (!done) { done = true; chrome.tabs.onUpdated.removeListener(onUpd); resolve(); } };
+    const onUpd = (id, info) => { if (id === tabId && info.status === "complete") finish(); };
+    chrome.tabs.onUpdated.addListener(onUpd);
+    chrome.tabs.get(tabId, (t) => { if (chrome.runtime.lastError) finish(); else if (t && t.status === "complete") finish(); });
+    setTimeout(finish, maxMs || 15000);
+  });
 }
 
 function safeSendCs(tabId, msg, timeoutMs = 30000) {
@@ -340,19 +348,30 @@ function safeSendCs(tabId, msg, timeoutMs = 30000) {
   });
 }
 
-async function waitForCs(tabId, platform, maxMs) {
+async function waitForCs(tabId, maxMs) {
   const start = Date.now();
+  // First try a few quick pings
   while (Date.now() - start < maxMs) {
     const r = await safeSendCs(tabId, { type: "PING_CS" }, 1500);
     if (r && r.ok) return true;
-    await sleep(800);
+    // If "receiving end" error, try to inject the content scripts manually
+    if (r && /Receiving end|Could not establish/i.test(r.error || "")) {
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId, allFrames: false },
+          files: ["content_scripts/common.js", "content_scripts/grok.js"]
+        });
+      } catch (e) {
+        // Cannot inject (e.g. chrome:// page) — try waiting; will fail eventually
+      }
+    }
+    await sleep(700);
   }
   return false;
 }
 
 // ---------- Content Script Reports ----------
 async function handleCsReport(payload, sender) {
-  // payload: { kind: 'card_update'|'layout_change'|'login_required'|'captcha'|'quota'|'moderation'|'rate_limit'|'error', items?, message? }
   const project = await Project.getActive();
   if (!project) return;
   const kind = payload?.kind;
@@ -370,7 +389,6 @@ async function handleCsReport(payload, sender) {
     }
     await Project.save(project);
     notifyUi({ type: "TRACKER_UPDATE" });
-    // Auto-download finished
     const settings = (await Storage.get(["settings"])).settings;
     if (settings.autoDownload) {
       const ready = project.tracker.filter(t => t.status === "completed" && t.mediaUrl && !t.downloaded);
@@ -387,7 +405,7 @@ async function handleCsReport(payload, sender) {
     }
   } else if (kind === "layout_change") {
     Logger.warn("Layout change detected: " + payload.message);
-    notifyUi({ type: "LAYOUT_CHANGE", message: payload.message, platform: payload.platform });
+    notifyUi({ type: "LAYOUT_CHANGE", message: payload.message, platform: PLATFORM });
     state.paused = true;
   } else if (["login_required","captcha","quota","moderation","rate_limit","error"].includes(kind)) {
     Logger.warn(kind + ": " + (payload.message || ""));
@@ -398,15 +416,14 @@ async function handleCsReport(payload, sender) {
 
 // ---------- Download Scan ----------
 async function scanAndDownload(opts) {
-  const platform = opts.platform || "all";
-  const scanAll  = opts.scanAll !== false;
-  const tabs = await collectTargetTabs(platform, scanAll);
-  if (!tabs.length) return { ok: false, error: "No matching tabs open." };
+  const scanAll = opts.scanAll !== false;
+  const tabs = await collectTargetTabs(scanAll);
+  if (!tabs.length) return { ok: false, error: "No Grok tabs open. Open grok.com first." };
   let found = 0, downloaded = 0;
   const project = await Project.getActive();
   for (const tab of tabs) {
-    await waitForCs(tab.id, detectPlat(tab.url), 8000);
-    const r = await safeSendCs(tab.id, { type: "SCAN_RESULTS", payload: { project: project } }, 30000);
+    await waitForCs(tab.id, 8000);
+    const r = await safeSendCs(tab.id, { type: "SCAN_RESULTS", payload: { project } }, 30000);
     if (r && r.ok && Array.isArray(r.items)) {
       found += r.items.length;
       for (const it of r.items) {
@@ -421,7 +438,6 @@ async function scanAndDownload(opts) {
         });
         if (dl.ok) downloaded++;
         if (project) {
-          // Best-effort attach to a free tracker entry if idx exists
           const matchIdx = it.idx ?? null;
           if (matchIdx != null) {
             Tracker.update(project.tracker, matchIdx, {
@@ -449,32 +465,27 @@ async function scanAndDownload(opts) {
   return { ok: true, found, downloaded, scanned: tabs.length };
 }
 
-async function collectTargetTabs(platform, scanAll) {
+async function collectTargetTabs(scanAll) {
   if (!scanAll) {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     return tab ? [tab] : [];
   }
-  if (platform === "grok") return chrome.tabs.query({ url: ["*://grok.com/*","*://*.grok.com/*"] });
-  if (platform === "flow") return chrome.tabs.query({ url: ["*://labs.google/*","*://flow.google.com/*"] });
-  // all
-  const g = await chrome.tabs.query({ url: ["*://grok.com/*","*://*.grok.com/*"] });
-  const f = await chrome.tabs.query({ url: ["*://labs.google/*","*://flow.google.com/*"] });
-  return [...g, ...f];
+  return chrome.tabs.query({ url: GROK_URL_PATTERNS });
 }
 
-function detectPlat(url){ if(!url) return "grok"; if(url.includes("grok")) return "grok"; if(url.includes("labs.google")||url.includes("flow.google")) return "flow"; return "grok"; }
-
-// ---------- Diagnose & Validate (helpers for side panel) ----------
-async function diagnosePage(platform) {
-  const tab = await ensurePlatformTab(platform || "grok");
-  await waitForCs(tab.id, platform || detectPlat(tab.url), 8000);
+// ---------- Diagnose & Validate ----------
+async function diagnosePage() {
+  const tab = await ensureGrokTab();
+  const ready = await waitForCs(tab.id, 12000);
+  if (!ready) return { ok: false, error: "Grok content script not reachable. Make sure grok.com is loaded and you are logged in." };
   const r = await safeSendCs(tab.id, { type: "DIAGNOSE_PAGE" }, 8000);
   return r && r.ok ? { ok: true, ...r } : { ok: false, error: (r && r.error) || "diagnose failed" };
 }
 
-async function validateSelectors(platform) {
-  const tab = await ensurePlatformTab(platform || "grok");
-  await waitForCs(tab.id, platform || detectPlat(tab.url), 8000);
+async function validateSelectors() {
+  const tab = await ensureGrokTab();
+  const ready = await waitForCs(tab.id, 12000);
+  if (!ready) return { ok: false, error: "Grok content script not reachable. Open grok.com (logged in) and retry." };
   const r = await safeSendCs(tab.id, { type: "VALIDATE_SELECTORS" }, 6000);
   return r || { ok: false, error: "validate failed" };
 }
@@ -484,5 +495,4 @@ function notifyUi(msg) {
   chrome.runtime.sendMessage(msg).catch(() => {});
 }
 
-// ---------- Utils ----------
 function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }

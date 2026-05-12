@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Calibrate Selectors — AI Bulk Studio</title>
+  <title>Calibrate Grok — Grok Bulk Studio</title>
   <link rel="stylesheet" href="../sidepanel/sidepanel.css" />
   <style>
     body{padding:18px}
@@ -14,24 +14,14 @@
     .field-row button{min-width:80px;padding:8px}
     .ok{color:var(--ok)} .bad{color:var(--err)} .warn{color:var(--warn)}
     .top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-    @media (max-width:600px){.grid{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
   <div class="top">
-    <h2 style="margin:0">Calibration</h2>
-    <div>
-      <label>Platform:
-        <select id="platform" data-testid="cal-platform">
-          <option value="grok">Grok</option>
-          <option value="flow">Flow</option>
-        </select>
-      </label>
-    </div>
+    <h2 style="margin:0">Calibrate Grok</h2>
   </div>
 
-  <p>For each role, open the target site and click <b>Pick</b>, then click the element on the page. Use <b>Test</b> to verify, and <b>Save</b> to store. Reset returns to built-in defaults.</p>
+  <p>For each role, open <b>grok.com</b> and tap <b>Pick</b>, then click the matching element on the page. Use <b>Test</b> to verify, <b>Save All</b> to store.</p>
 
   <div id="rows"></div>
 

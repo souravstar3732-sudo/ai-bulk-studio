@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "AI Bulk Generator Downloader Editor",
-  "short_name": "AI Bulk Studio",
-  "version": "1.0.2",
-  "description": "Bulk generate, download, and batch edit AI videos/images from Grok Imagine and Google Flow/Veo. Mobile-friendly side panel UI.",
+  "name": "Grok Bulk Studio",
+  "short_name": "Grok Bulk Studio",
+  "version": "1.0.3",
+  "description": "Bulk generate, download, and batch edit AI videos/images from Grok Imagine. Mobile-friendly side panel UI.",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -11,7 +11,7 @@
     "128": "icons/icon128.png"
   },
   "action": {
-    "default_title": "AI Bulk Studio",
+    "default_title": "Grok Bulk Studio",
     "default_popup": "popup/popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
@@ -40,36 +40,21 @@
   ],
   "host_permissions": [
     "https://grok.com/*",
-    "https://x.com/*",
-    "https://*.x.com/*",
     "https://*.grok.com/*",
-    "https://labs.google/*",
-    "https://*.google.com/*",
-    "https://flow.google.com/*",
-    "https://*.googleusercontent.com/*"
+    "https://x.com/*",
+    "https://*.x.com/*"
   ],
   "content_scripts": [
     {
       "matches": [
         "https://grok.com/*",
+        "https://*.grok.com/*",
         "https://x.com/i/grok*",
-        "https://*.grok.com/*"
+        "https://x.com/grok*"
       ],
       "js": [
         "content_scripts/common.js",
         "content_scripts/grok.js"
-      ],
-      "run_at": "document_idle",
-      "all_frames": false
-    },
-    {
-      "matches": [
-        "https://labs.google/*",
-        "https://flow.google.com/*"
-      ],
-      "js": [
-        "content_scripts/common.js",
-        "content_scripts/flow.js"
       ],
       "run_at": "document_idle",
       "all_frames": false

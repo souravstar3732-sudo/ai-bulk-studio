@@ -1,8 +1,9 @@
-// sidepanel/sidepanel.js — main UI controller
-// Communicates with background service worker via chrome.runtime.sendMessage.
+// sidepanel/sidepanel.js — Grok-only UI controller (v1.0.3)
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+
+const PLATFORM = "grok";
 
 // ===== Tabs =====
 const tabBtns = $$(".tab");
@@ -26,7 +27,7 @@ function send(type, payload) {
     chrome.runtime.sendMessage({ type, ...payload }, (resp) => resolve(resp || { ok: false }));
   });
 }
-function statusLine(id, text, kind = "info") {
+function statusLine(id, text) {
   const el = $(id);
   if (!el) return;
   const time = new Date().toLocaleTimeString();
@@ -34,7 +35,6 @@ function statusLine(id, text, kind = "info") {
   $("#bottomLog").textContent = text;
 }
 
-// ===== File → dataURL helper =====
 function fileToObj(f) {
   return new Promise((res) => {
     const r = new FileReader();
@@ -43,8 +43,7 @@ function fileToObj(f) {
   });
 }
 
-// ============== GENERATE TAB ==============
-const gPlatform = $("#gPlatform");
+// ============== GENERATE ==============
 const gType     = $("#gType");
 const gMethod   = $("#gMethod");
 const gBatch    = $("#gBatch");
@@ -70,7 +69,6 @@ function updateMapping() {
   list.forEach(p => { const k = p.toLowerCase(); if (seen.has(k)) dups++; seen.add(k); });
   gDupCount.textContent = dups;
 
-  // Preview map
   mappingPreview.innerHTML = "";
   const starts = Array.from(gStartImages.files || []);
   const ends   = Array.from(gEndImages.files || []);
@@ -91,24 +89,23 @@ function updateMapping() {
 }
 
 async function startBulk({ dryRun = false } = {}) {
-  // Hide any prior calibration banner — user is starting a fresh attempt
   const banner = document.getElementById("calBanner");
   if (banner) banner.style.display = "none";
 
   const prompts = getPromptsArr();
   if (!prompts.length) { statusLine("#genStatus", "No prompts."); return; }
 
-  // Pre-flight: verify required selectors exist on the platform page BEFORE submitting
-  const platform = gPlatform.value;
-  statusLine("#genStatus", "Pre-flight check: verifying selectors on " + platform + " …");
-  const val = await send("VALIDATE_SELECTORS", { platform });
+  // Pre-flight: verify required selectors are reachable on the Grok page
+  statusLine("#genStatus", "Pre-flight: opening Grok tab if needed and verifying selectors …");
+  const val = await send("VALIDATE_SELECTORS", { platform: PLATFORM });
   if (!val || !val.ok) {
     const miss = [];
     if (val && val.promptInput && !val.promptInput.found)  miss.push("prompt input");
     if (val && val.generateButton && !val.generateButton.found) miss.push("generate button");
-    const msg = `Pre-flight failed: ${miss.join(", ") || "selectors not found"} on ${platform}. Click "Diagnose Page" or "Open Calibration" to fix.`;
+    const reason = val && val.error ? val.error : (miss.join(", ") || "selectors not found");
+    const msg = `Pre-flight failed: ${reason}. Click "Diagnose Page" or "Open Calibration" to fix.`;
     statusLine("#genStatus", msg);
-    showCalibrationBanner(platform, msg);
+    showCalibrationBanner(msg);
     return;
   }
   statusLine("#genStatus", `Pre-flight OK · prompt=${val.promptInput.selector} · gen=${val.generateButton.selector}`);
@@ -116,20 +113,19 @@ async function startBulk({ dryRun = false } = {}) {
   const batchVal = gBatch.value === "custom" ? Number(prompt("Custom batch size:") || 5) : Number(gBatch.value);
   const project = {
     name: gProject.value || "Untitled",
-    platform: platform,
+    platform: PLATFORM,
     generationType: gType.value,
     method: gMethod.value,
     batchSize: batchVal,
     prompts
   };
-  // Convert images to dataURLs
   const sFiles = Array.from(gStartImages.files || []);
   const eFiles = Array.from(gEndImages.files || []);
   const startImages = await Promise.all(sFiles.map(fileToObj));
   const endImages   = await Promise.all(eFiles.map(fileToObj));
 
-  statusLine("#genStatus", `Starting ${prompts.length} prompts on ${project.platform} (${project.method}, batch ${batchVal})${dryRun ? " — DRY RUN" : ""}`);
-  const res = await send("GEN_START", { payload: { ...project, prompts, startImages, endImages, dryRun, platform: project.platform } });
+  statusLine("#genStatus", `Starting ${prompts.length} prompts on grok (${project.method}, batch ${batchVal})${dryRun ? " — DRY RUN" : ""}`);
+  const res = await send("GEN_START", { payload: { ...project, prompts, startImages, endImages, dryRun, platform: PLATFORM } });
   if (!res.ok) statusLine("#genStatus", "ERR: " + res.error);
   else {
     statusLine("#genStatus", `OK. ${res.duplicates?.length || 0} duplicates flagged.`);
@@ -158,40 +154,37 @@ $("#btnSaveProj").addEventListener("click", async () => {
 $("#btnSmart").addEventListener("click", async () => {
   statusLine("#genStatus", "Probing concurrency …");
   const start = Date.now();
-  const r = await send("PING");
+  await send("PING");
   statusLine("#genStatus", `Background round-trip: ${Date.now()-start}ms. Suggested workers: 2 (mobile-safe).`);
 });
 $("#btnValidate").addEventListener("click", async () => {
-  const platform = gPlatform.value;
-  statusLine("#genStatus", "Validating selectors on " + platform + " …");
-  const v = await send("VALIDATE_SELECTORS", { platform });
+  statusLine("#genStatus", "Validating selectors on grok …");
+  const v = await send("VALIDATE_SELECTORS", { platform: PLATFORM });
   if (v && v.ok) {
     statusLine("#genStatus", `✓ All required selectors found.\n  prompt: ${v.promptInput.selector}\n  generate: ${v.generateButton.selector} (text="${v.generateButton.text||""}")`);
   } else {
     const miss = [];
     if (v && v.promptInput && !v.promptInput.found)  miss.push("prompt input");
     if (v && v.generateButton && !v.generateButton.found) miss.push("generate button");
-    statusLine("#genStatus", "✗ Missing: " + (miss.join(", ") || "selectors") + ". Open Calibration to bind them.");
-    showCalibrationBanner(platform, "Validate Selectors failed: " + miss.join(", "));
+    const reason = v && v.error ? v.error : (miss.join(", ") || "selectors");
+    statusLine("#genStatus", "✗ Missing: " + reason + ". Open Calibration to bind them.");
+    showCalibrationBanner("Validate Selectors failed: " + reason);
   }
 });
 $("#btnDiagnose").addEventListener("click", async () => {
-  const platform = gPlatform.value;
   const out = $("#diagOutput");
   out.style.display = "block";
-  out.textContent = "Diagnosing " + platform + " page …";
-  const r = await send("DIAGNOSE_PAGE", { platform });
+  out.textContent = "Diagnosing grok page …";
+  const r = await send("DIAGNOSE_PAGE", { platform: PLATFORM });
   if (!r.ok) { out.textContent = "ERR: " + r.error; return; }
   const dom = r.dom;
-  const list = [];
-  list.push(`URL: ${r.url}\n`);
   const fmt = (arr, name) => {
     if (!arr.length) return `\n${name}: (none)\n`;
     return `\n${name} (${arr.length}):\n` + arr.slice(0,15).map((e,i) =>
       `  ${i+1}. ${e.tag}${e.testid?` testid="${e.testid}"`:""}${e.aria?` aria="${e.aria}"`:""}${e.placeholder?` ph="${e.placeholder}"`:""}${e.text?` "${e.text.slice(0,40)}"`:""} [${e.w}x${e.h}${e.visible?"":" hidden"}]\n     → ${e.selector}`
     ).join("\n") + "\n";
   };
-  out.textContent = list.join("") +
+  out.textContent = `URL: ${r.url}\n` +
     fmt(dom.textareas.filter(x=>x.visible), "Textareas (visible)") +
     fmt(dom.contentEditables.filter(x=>x.visible), "ContentEditables (visible)") +
     fmt(dom.buttons.filter(x=>x.visible && x.text).slice(0,30), "Buttons with text (visible)") +
@@ -200,18 +193,17 @@ $("#btnDiagnose").addEventListener("click", async () => {
   statusLine("#genStatus", `Diagnose complete: ${dom.textareas.length} textareas, ${dom.buttons.length} buttons, ${dom.fileInputs.length} file inputs.`);
 });
 $("#btnCalibrate").addEventListener("click", async () => {
-  await send("CALIBRATE_OPEN", { platform: gPlatform.value });
+  await send("CALIBRATE_OPEN", { platform: PLATFORM });
 });
 
-// ============== DOWNLOAD TAB ==============
-$("#dlScanCurrent").addEventListener("click", async () => doScan({ scanAll: false }));
-$("#dlScanGrok").addEventListener("click",    async () => doScan({ scanAll: true, platform: "grok" }));
-$("#dlScanFlow").addEventListener("click",    async () => doScan({ scanAll: true, platform: "flow" }));
+// ============== DOWNLOAD ==============
+$("#dlScanCurrent").addEventListener("click", () => doScan({ scanAll: false }));
+$("#dlScanGrok").addEventListener("click",    () => doScan({ scanAll: true, platform: PLATFORM }));
 $("#dlFinished").addEventListener("click",    async () => {
   const st = await send("GET_STATUS"); if (!st.project) { statusLine("#dlStatus","No active project"); return; }
   const ready = (st.project.tracker || []).filter(t => t.status === "completed" && !t.downloaded);
   for (const r of ready) {
-    await send("DOWNLOAD_FILE", { payload: { url: r.mediaUrl, name: `${st.project.name}_${st.project.platform}_${st.project.method}_${String(r.idx).padStart(3,"0")}.${(r.kind==="image"?"png":"mp4")}`, folder: `AI_Content_Hub/${st.project.platform==="flow"?"Flow":"Grok"}/${st.project.name}` } });
+    await send("DOWNLOAD_FILE", { payload: { url: r.mediaUrl, name: `${st.project.name}_grok_${st.project.method}_${String(r.idx).padStart(3,"0")}.${(r.kind==="image"?"png":"mp4")}`, folder: `AI_Content_Hub/Grok/${st.project.name}` } });
   }
   statusLine("#dlStatus", `Sent ${ready.length} downloads.`);
   refreshTracker();
@@ -234,8 +226,8 @@ $("#dlExportLog").addEventListener("click", async () => {
 $("#dlOpenFolder").addEventListener("click", async () => { await send("OPEN_DOWNLOADS"); });
 
 async function doScan(opts) {
-  statusLine("#dlStatus", `Scanning${opts.scanAll ? " all tabs" : " current page"} (${opts.platform || "any"}) …`);
-  const r = await send("DOWNLOAD_SCAN", { payload: opts });
+  statusLine("#dlStatus", `Scanning${opts.scanAll ? " all Grok tabs" : " current page"} …`);
+  const r = await send("DOWNLOAD_SCAN", { payload: { ...opts, platform: PLATFORM } });
   if (!r.ok) statusLine("#dlStatus", "ERR: " + r.error);
   else statusLine("#dlStatus", `Found ${r.found} · downloaded ${r.downloaded} · tabs ${r.scanned}`);
   refreshTracker();
@@ -258,7 +250,7 @@ async function refreshTracker() {
   }
 }
 
-// ============== EDIT TAB ==============
+// ============== EDIT ==============
 import { Editor } from "../lib/editor.js";
 
 let editor = new Editor($("#edCanvas"));
@@ -301,8 +293,7 @@ $("#edExport").addEventListener("click", async () => {
       });
       const name = `${projName}_edited_${String(i+1).padStart(3,"0")}.webm`;
       const url = URL.createObjectURL(blob);
-      await new Promise(res => chrome.downloads.download({ url, filename: `AI_Content_Hub/Edited/${projName}/${name}`, conflictAction: "uniquify", saveAs: false }, (id) => {
-        // Fallback to flat path if folder blocked
+      await new Promise(res => chrome.downloads.download({ url, filename: `AI_Content_Hub/Edited/${projName}/${name}`, conflictAction: "uniquify", saveAs: false }, () => {
         if (chrome.runtime.lastError) {
           chrome.downloads.download({ url, filename: name, conflictAction: "uniquify", saveAs: false }, () => res());
         } else res();
@@ -316,11 +307,10 @@ $("#edExport").addEventListener("click", async () => {
 $("#edCancel").addEventListener("click", () => { editor.cancel(); statusLine("#edStatus", "Cancelled."); });
 $("#edOpen").addEventListener("click", async () => { await send("OPEN_DOWNLOADS"); });
 
-// ============== SETTINGS TAB ==============
+// ============== SETTINGS ==============
 async function loadSettings() {
   const { ok, settings } = await send("SETTINGS_GET");
   if (!ok) return;
-  $("#sDefPlatform").value = settings.defaultPlatform;
   $("#sDefType").value     = settings.defaultType;
   $("#sDefMethod").value   = settings.defaultMethod;
   $("#sDefBatch").value    = settings.defaultBatch;
@@ -341,7 +331,7 @@ async function loadSettings() {
 }
 $("#sSave").addEventListener("click", async () => {
   const settings = {
-    defaultPlatform: $("#sDefPlatform").value,
+    defaultPlatform: PLATFORM,
     defaultType:     $("#sDefType").value,
     defaultMethod:   $("#sDefMethod").value,
     defaultBatch:    Number($("#sDefBatch").value)||5,
@@ -363,12 +353,11 @@ $("#sSave").addEventListener("click", async () => {
   await send("SETTINGS_SET", { settings });
   statusLine("#sStatus", "Settings saved.");
 });
-$("#calOpenGrok").addEventListener("click", () => send("CALIBRATE_OPEN", { platform: "grok" }));
-$("#calOpenFlow").addEventListener("click", () => send("CALIBRATE_OPEN", { platform: "flow" }));
+$("#calOpenGrok").addEventListener("click", () => send("CALIBRATE_OPEN", { platform: PLATFORM }));
 $("#calReset").addEventListener("click", async () => { const r = await send("SELECTORS_RESET"); statusLine("#sStatus", r.ok ? "Calibration reset to defaults." : "ERR: " + r.error); });
 $("#projExport").addEventListener("click", async () => {
   const r = await send("PROJECT_EXPORT");
-  if (r.ok) downloadAsFile(r.json, "ai_bulk_studio_projects.json", "application/json");
+  if (r.ok) downloadAsFile(r.json, "grok_bulk_studio_projects.json", "application/json");
 });
 $("#projImport").addEventListener("click", () => { $("#hiddenImport").click(); });
 $("#hiddenImport").addEventListener("change", async (e) => {
@@ -382,7 +371,7 @@ $("#logExport").addEventListener("click", async () => {
   const r = await send("LOG_GET");
   if (r.ok) {
     const lines = r.logs.map(l => `${new Date(l.t).toISOString()} [${l.level}] ${l.msg} ${l.extra?JSON.stringify(l.extra):""}`).join("\n");
-    downloadAsFile(lines, "ai_bulk_studio_logs.txt", "text/plain");
+    downloadAsFile(lines, "grok_bulk_studio_logs.txt", "text/plain");
   }
 });
 $("#logClear").addEventListener("click", async () => { await send("LOG_CLEAR"); statusLine("#sStatus","Logs cleared."); });
@@ -396,7 +385,7 @@ async function refreshActiveProjectSelect() {
   const optNew = document.createElement("option"); optNew.value = ""; optNew.textContent = "— Active project —"; projSel.appendChild(optNew);
   for (const p of (r.list || [])) {
     const o = document.createElement("option");
-    o.value = p.id; o.textContent = `${p.name} · ${p.platform}`;
+    o.value = p.id; o.textContent = p.name;
     if (st.project && st.project.id === p.id) o.selected = true;
     projSel.appendChild(o);
   }
@@ -413,49 +402,44 @@ chrome.runtime.onMessage.addListener((msg) => {
   if (msg?.type === "GEN_DONE") statusLine("#genStatus", "Generation complete.");
   if (msg?.type === "DL_DONE") statusLine("#dlStatus", `Scan complete — ${msg.downloaded}/${msg.found} downloaded.`);
   if (msg?.type === "LAYOUT_CHANGE") {
-    statusLine("#genStatus", `Layout change on ${msg.platform}. Please recalibrate.`);
-    showCalibrationBanner(msg.platform, "The result area selector vanished. Recalibrate to fix.");
+    statusLine("#genStatus", `Layout change on grok. Please recalibrate.`);
+    showCalibrationBanner("The result area selector vanished. Recalibrate to fix.");
   }
   if (msg?.type === "PAUSE_REASON") {
     statusLine("#genStatus", `Paused: ${msg.reason} — ${msg.message||""}`);
     if (msg.reason === "needs_calibration" || msg.reason === "layout_change") {
-      showCalibrationBanner(msg.platform, msg.message || "");
+      showCalibrationBanner(msg.message || "");
     }
   }
 });
 
-function showCalibrationBanner(platform, message) {
+function showCalibrationBanner(message) {
   const banner = document.getElementById("calBanner");
   const msgEl  = document.getElementById("calBannerMsg");
   const btn    = document.getElementById("calBannerBtn");
   if (!banner) return;
-  msgEl.textContent = message || `Open Settings → Calibrate ${platform === "flow" ? "Flow" : "Grok"} to bind correct selectors.`;
+  msgEl.textContent = message || "Open Settings → Calibrate Grok to bind correct selectors.";
   banner.style.display = "flex";
   btn.onclick = async () => {
-    await send("CALIBRATE_OPEN", { platform: platform || "grok" });
+    await send("CALIBRATE_OPEN", { platform: PLATFORM });
     banner.style.display = "none";
   };
-  // Auto switch to Generate tab so the user sees the banner
   tabBtns.forEach(x => x.classList.toggle("active", x.dataset.tab === "generate"));
   Object.entries(panels).forEach(([k,p]) => p.classList.toggle("active", k === "generate"));
 }
 
-// ===== Helpers =====
 function downloadAsFile(text, name, mime) {
   const blob = new Blob([text], { type: mime });
   const url = URL.createObjectURL(blob);
   chrome.downloads.download({ url, filename: name, saveAs: false, conflictAction: "uniquify" });
 }
 
-// Boot
 (async function init() {
   await refreshActiveProjectSelect();
   await loadSettings();
-  // Populate form defaults from settings
   const { settings } = await send("SETTINGS_GET");
   if (settings) {
     if (!gProject.value) gProject.value = settings.defaultProjectName || "MyProject";
-    gPlatform.value = settings.defaultPlatform || "grok";
     gType.value     = settings.defaultType || "text_to_video";
     gMethod.value   = settings.defaultMethod || "auto";
     if (settings.defaultBatch) gBatch.value = String(settings.defaultBatch);

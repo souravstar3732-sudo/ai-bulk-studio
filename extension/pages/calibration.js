@@ -1,4 +1,5 @@
-// pages/calibration.js — calibration UI.
+// pages/calibration.js — Grok-only calibrator (v1.0.3)
+const PLATFORM = "grok";
 const ROLES = [
   "promptInput","bulkPromptArea","imageUpload","startImageUpload","endImageUpload",
   "generateButton","runAllButton","resultCardArea","videoArea","imageArea",
@@ -6,7 +7,6 @@ const ROLES = [
 ];
 
 const $ = (s)=>document.querySelector(s);
-const platformSel = $("#platform");
 const rowsEl = $("#rows");
 const statusEl = $("#status");
 
@@ -15,21 +15,17 @@ function log(msg, cls=""){
   statusEl.innerHTML = `<div class="${cls}">[${t}] ${msg}</div>` + statusEl.innerHTML;
 }
 
-const params = new URLSearchParams(location.search);
-if (params.get("platform")) platformSel.value = params.get("platform");
-
 let selectors = {};
 
 async function load() {
   const { selectors: s } = await chrome.runtime.sendMessage({ type: "SELECTORS_GET" });
-  selectors = s || { grok: {}, flow: {} };
+  selectors = s || { grok: {} };
   render();
 }
 
 function currentMap() {
-  const p = platformSel.value;
-  selectors[p] = selectors[p] || {};
-  return selectors[p];
+  selectors[PLATFORM] = selectors[PLATFORM] || {};
+  return selectors[PLATFORM];
 }
 
 function render() {
@@ -50,39 +46,30 @@ function render() {
       </div>`;
     rowsEl.appendChild(div);
   }
-  rowsEl.addEventListener("click", onClick, { once: false });
 }
 
-async function getActivePlatformTab() {
-  const platform = platformSel.value;
-  const urls = platform === "flow"
-    ? ["*://labs.google/*","*://flow.google.com/*"]
-    : ["*://grok.com/*","*://*.grok.com/*"];
-  const tabs = await chrome.tabs.query({ url: urls });
-  if (!tabs.length) {
-    const url = platform === "flow" ? "https://labs.google/flow" : "https://grok.com/imagine";
-    return await chrome.tabs.create({ url });
-  }
+async function getActiveGrokTab() {
+  const tabs = await chrome.tabs.query({ url: ["*://grok.com/*","*://*.grok.com/*","*://x.com/i/grok*","*://x.com/grok*"] });
+  if (!tabs.length) return await chrome.tabs.create({ url: "https://grok.com/imagine" });
   await chrome.tabs.update(tabs[0].id, { active: true });
   return tabs[0];
 }
 
-async function onClick(e) {
+rowsEl.addEventListener("click", async (e) => {
   const btn = e.target.closest("button[data-act]");
   if (!btn) return;
   const role = btn.dataset.role;
   const act  = btn.dataset.act;
   const cur  = currentMap();
   if (act === "clear") { delete cur[role]; render(); return; }
-  const tab = await getActivePlatformTab();
+  const tab = await getActiveGrokTab();
   if (act === "pick") {
-    log(`Pick on tab ${tab.id} for "${role}". Switch to the page and click the target element.`);
+    log(`Pick on tab ${tab.id} for "${role}". Switch to grok.com and click the target element.`);
     chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: pickPicker,
       args: [role]
     }).then(async () => {
-      // Poll for result stored in tab via chrome.storage.session
       const pollKey = "__pick_result__" + role;
       let tries = 0;
       const poll = setInterval(async () => {
@@ -110,9 +97,8 @@ async function onClick(e) {
       log(`${role} → ${ok ? "FOUND" : "NOT FOUND"} (${res?.result?.tag || "-"})`, ok ? "ok" : "bad");
     }).catch(err => log("Test failed: " + err.message, "bad"));
   }
-}
+});
 
-// ============= Injected functions =============
 function pickPicker(role) {
   if (window.__picking) return;
   window.__picking = role;
@@ -162,7 +148,6 @@ function pickPicker(role) {
     const cls = Array.from(el.classList).filter(c => !/^(hover|focus|active|js|is-|has-)/.test(c)).slice(0,2);
     let path = el.tagName.toLowerCase();
     if (cls.length) path += "." + cls.map(c => CSS.escape(c)).join(".");
-    // Add nth-of-type for uniqueness
     if (el.parentElement) {
       const sib = Array.from(el.parentElement.children).filter(s => s.tagName === el.tagName);
       if (sib.length > 1) path += `:nth-of-type(${sib.indexOf(el)+1})`;
@@ -182,7 +167,6 @@ function testSelector(spec) {
   return { ok: false };
 }
 
-// ============= Action buttons =============
 $("#saveAll").addEventListener("click", async () => {
   const r = await chrome.runtime.sendMessage({ type: "SELECTORS_SET", selectors });
   log(r && r.ok ? "Saved." : "Save failed", r && r.ok ? "ok" : "bad");
@@ -194,7 +178,7 @@ $("#resetAll").addEventListener("click", async () => {
 $("#exportSel").addEventListener("click", () => {
   const blob = new Blob([JSON.stringify(selectors, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
-  chrome.downloads.download({ url, filename: "ai_bulk_studio_calibration.json", saveAs: true });
+  chrome.downloads.download({ url, filename: "grok_bulk_studio_calibration.json", saveAs: true });
 });
 $("#importSel").addEventListener("click", () => $("#impFile").click());
 $("#impFile").addEventListener("change", async (e) => {
@@ -203,6 +187,5 @@ $("#impFile").addEventListener("change", async (e) => {
     selectors = JSON.parse(await f.text()); render(); log("Imported.", "ok");
   } catch (err) { log("Import failed: " + err.message, "bad"); }
 });
-platformSel.addEventListener("change", render);
 
 load();

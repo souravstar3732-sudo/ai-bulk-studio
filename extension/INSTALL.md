@@ -6,17 +6,17 @@
 2. Open `chrome://extensions`.
 3. Toggle **Developer mode** ON (top right).
 4. Click **Load unpacked** and select the `extension` folder.
-5. Pin **AI Bulk Studio** to the toolbar.
+5. Pin **Grok Bulk Studio** to the toolbar.
 6. Click the icon → **Open Side Panel**.
 
 ## Android — Quetta / Kiwi Browser
 
-> Standard Chrome on Android does not support extensions. Use a Chromium browser that does, e.g. **Quetta Browser**, **Kiwi Browser**, or **Mises**. Behaviour and limits are browser-specific; not all chrome APIs are equally well supported.
+> Standard Chrome on Android does not support extensions. Use a Chromium browser that does, e.g. **Quetta Browser**, **Kiwi Browser**, or **Mises**.
 
-1. In the Chromium browser open the **Extensions** page (e.g. `chrome://extensions` or via the menu → Extensions).
+1. In the Chromium browser open the Extensions page (`chrome://extensions` or via menu → Extensions).
 2. Enable **Developer mode**.
-3. Tap **+ (from .zip)** and select `extension.zip` — **or** **Load unpacked** and select the unzipped folder.
-4. Open the new tab menu and tap the AI Bulk Studio icon.
+3. Tap **+ (from .zip)** and select `extension.zip` — **or** **Load unpacked** with the unzipped folder.
+4. Open the new tab menu and tap the Grok Bulk Studio icon.
 5. The side panel may not exist on mobile; if so the extension page opens in a tab — same UI.
 
 ### Mobile tips
@@ -27,11 +27,11 @@
 
 ## First-time setup
 
-1. Open **Grok Imagine** (`https://grok.com/imagine`) or **Google Flow/Veo** (`https://labs.google/flow`) and log in normally.
-2. Return to the extension → **Settings** → **Calibrate Grok** / **Calibrate Flow**.
-3. For each role (prompt input, generate button, etc.), click **Pick** then click the actual element on the page.
-4. **Test** verifies the selector is found. **Save All** stores it.
-5. If the platform UI changes later, the extension auto-pauses and warns "Layout change — recalibrate".
+1. Open `https://grok.com/imagine` and log in normally.
+2. Back in the extension → **Generate** tab → tap **Validate Selectors**.
+3. If it says ✗ Missing → tap **Diagnose Page** to see what's actually on your Grok page → tap **Open Calibration**.
+4. For each role (especially `promptInput` and `generateButton`): tap **Pick**, switch to the Grok tab, click the matching element, return → **Test** (should say FOUND) → **Save All**.
+5. Go back to the side panel and try **Start Bulk** with a few prompts.
 
 ## Uninstall
 
