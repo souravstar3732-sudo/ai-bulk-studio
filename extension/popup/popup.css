@@ -1,0 +1,27 @@
+:root{
+  --bg:#0e1116;
+  --panel:#161b22;
+  --line:#262d36;
+  --text:#e7ecf3;
+  --muted:#9aa6b2;
+  --accent:#ffb020;
+  --accent-2:#ff7a59;
+  --ok:#3ddc97;
+  --err:#ff5d5d;
+  --warn:#f5c451;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:"Sora","Segoe UI",system-ui,sans-serif;}
+body{width:320px;}
+.wrap{padding:14px;display:flex;flex-direction:column;gap:12px}
+header h1{margin:0;font-size:18px;letter-spacing:.5px}
+header .sub{margin:2px 0 0;color:var(--muted);font-size:12px}
+.status{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:13px}
+.row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dashed var(--line)}
+.row:last-child{border-bottom:none}
+button{font-family:inherit;width:100%;padding:14px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:15px;font-weight:600;cursor:pointer}
+button.big{padding:18px;font-size:16px}
+button.primary{background:linear-gradient(180deg,var(--accent),var(--accent-2));color:#1a1208;border:none}
+button.ghost{background:transparent}
+button:active{transform:translateY(1px)}
+footer{text-align:center;color:var(--muted)}

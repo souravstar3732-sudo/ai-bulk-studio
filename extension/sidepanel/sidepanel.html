@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Bulk Studio</title>
+  <link rel="stylesheet" href="sidepanel.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="dot"></span>
+      <span>AI Bulk Studio</span>
+    </div>
+    <div class="topright">
+      <select id="activeProject" data-testid="active-project-select"></select>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-tab="generate" data-testid="tab-generate">Generate</button>
+    <button class="tab" data-tab="download" data-testid="tab-download">Download</button>
+    <button class="tab" data-tab="edit"     data-testid="tab-edit">Edit</button>
+    <button class="tab" data-tab="settings" data-testid="tab-settings">Settings</button>
+  </nav>
+
+  <main>
+    <!-- ============= GENERATE ============= -->
+    <section id="tab-generate" class="panel active">
+      <div class="grid-2">
+        <label class="field">
+          <span>Platform</span>
+          <select id="gPlatform" data-testid="generate-platform">
+            <option value="grok">Grok Imagine</option>
+            <option value="flow">Google Flow / Veo</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Type</span>
+          <select id="gType" data-testid="generate-type">
+            <option value="text_to_video">Text → Video</option>
+            <option value="text_to_image">Text → Image</option>
+            <option value="image_to_video">Image → Video</option>
+            <option value="start_end_video">Start + End Frame Video</option>
+            <option value="prompt_image">Prompt + Image Upload</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Method</span>
+          <select id="gMethod" data-testid="generate-method">
+            <option value="auto">Auto (recommended)</option>
+            <option value="native">Native Bulk</option>
+            <option value="multitab">Multi-Tab</option>
+            <option value="hybrid">Hybrid</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Batch Size</span>
+          <select id="gBatch" data-testid="generate-batch">
+            <option>2</option><option>5</option><option>10</option>
+            <option>20</option><option>50</option><option value="custom">Custom…</option>
+          </select>
+        </label>
+      </div>
+
+      <label class="field">
+        <span>Project name</span>
+        <input id="gProject" placeholder="e.g. NeonCity_Vol1" data-testid="generate-project" />
+      </label>
+
+      <label class="field">
+        <span>Prompts (1 per line, up to 50 per batch)</span>
+        <textarea id="gPrompts" rows="8" placeholder="Paste your prompts here, one per line." data-testid="generate-prompts"></textarea>
+        <small class="hint"><b id="gPromptCount">0</b> prompts · <b id="gDupCount">0</b> duplicates</small>
+      </label>
+
+      <div class="grid-2">
+        <label class="field">
+          <span>Start image(s)</span>
+          <input id="gStartImages" type="file" multiple accept="image/*" data-testid="generate-start-images" />
+        </label>
+        <label class="field">
+          <span>End image(s)</span>
+          <input id="gEndImages" type="file" multiple accept="image/*" data-testid="generate-end-images" />
+        </label>
+      </div>
+
+      <div id="mappingPreview" class="mapping" data-testid="mapping-preview"></div>
+
+      <div class="row gap">
+        <button class="primary big" id="btnStart" data-testid="btn-start-bulk">Start Bulk</button>
+        <button class="ghost"        id="btnPause" data-testid="btn-pause">Pause</button>
+        <button class="ghost"        id="btnResume" data-testid="btn-resume">Resume</button>
+        <button class="ghost"        id="btnStop"  data-testid="btn-stop">Stop</button>
+      </div>
+      <div class="row gap">
+        <button class="ghost" id="btnRetry" data-testid="btn-retry-failed">Retry Failed</button>
+        <button class="ghost" id="btnSaveProj" data-testid="btn-save-project">Save Project</button>
+        <button class="ghost" id="btnDryRun" data-testid="btn-dry-run">Dry Run Test</button>
+        <button class="ghost" id="btnSmart"  data-testid="btn-smart-concurrency">Smart Concurrency</button>
+      </div>
+
+      <div class="status-pane" id="genStatus" data-testid="gen-status"></div>
+    </section>
+
+    <!-- ============= DOWNLOAD ============= -->
+    <section id="tab-download" class="panel">
+      <div class="grid-2">
+        <button class="primary" id="dlScanCurrent" data-testid="dl-scan-current">Scan Current Page</button>
+        <button class="primary" id="dlScanGrok"    data-testid="dl-scan-grok">Scan All Grok Tabs</button>
+        <button class="primary" id="dlScanFlow"    data-testid="dl-scan-flow">Scan All Flow Tabs</button>
+        <button class="ghost"   id="dlFinished"    data-testid="dl-finished">Download Finished</button>
+        <button class="ghost"   id="dlRetryMiss"   data-testid="dl-retry-missing">Retry Missing</button>
+        <button class="ghost"   id="dlExportLog"   data-testid="dl-export-log">Export Download Log</button>
+        <button class="ghost"   id="dlOpenFolder"  data-testid="dl-open-folder">Open Downloads</button>
+      </div>
+      <div class="status-pane" id="dlStatus" data-testid="dl-status"></div>
+      <div id="trackerList" class="tracker-list" data-testid="tracker-list"></div>
+    </section>
+
+    <!-- ============= EDIT ============= -->
+    <section id="tab-edit" class="panel">
+      <label class="field">
+        <span>Choose videos</span>
+        <input id="edFiles" type="file" multiple accept="video/*" data-testid="edit-files" />
+      </label>
+      <label class="field">
+        <span>Project name</span>
+        <input id="edProject" placeholder="edited" data-testid="edit-project" />
+      </label>
+      <div class="grid-2">
+        <label class="field">
+          <span>Preset</span>
+          <select id="edPreset" data-testid="edit-preset">
+            <option value="9:16">Vertical 9:16</option>
+            <option value="1:1">Square 1:1</option>
+            <option value="16:9">Landscape 16:9</option>
+            <option value="custom">Custom</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Zoom</span>
+          <select id="edZoom" data-testid="edit-zoom">
+            <option value="0">None</option>
+            <option value="3">3%</option>
+            <option value="5" selected>5%</option>
+            <option value="8">8%</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Sharpen</span>
+          <select id="edSharpen" data-testid="edit-sharpen">
+            <option value="off">Off</option>
+            <option value="low" selected>Low</option>
+            <option value="medium">Medium</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Brightness</span>
+          <input id="edBrightness" type="range" min="-30" max="30" value="0" data-testid="edit-brightness" />
+        </label>
+        <label class="field">
+          <span>Contrast</span>
+          <input id="edContrast" type="range" min="-30" max="30" value="0" data-testid="edit-contrast" />
+        </label>
+        <label class="field">
+          <span>Trim start (s)</span>
+          <input id="edTrimStart" type="number" min="0" step="0.1" value="0" data-testid="edit-trim-start" />
+        </label>
+        <label class="field">
+          <span>Trim end (s, 0=none)</span>
+          <input id="edTrimEnd" type="number" min="0" step="0.1" value="0" data-testid="edit-trim-end" />
+        </label>
+        <label class="field">
+          <span>Border</span>
+          <select id="edBorder" data-testid="edit-border">
+            <option value="0">None</option>
+            <option value="4">Thin</option>
+            <option value="10">Medium</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Fade</span>
+          <select id="edFade" data-testid="edit-fade">
+            <option value="0">None</option>
+            <option value="0.4">0.4s</option>
+            <option value="0.8">0.8s</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Overlay text (optional)</span>
+          <input id="edOverlay" placeholder="" data-testid="edit-overlay" />
+        </label>
+      </div>
+
+      <div class="row gap">
+        <button class="primary big" id="edPreview" data-testid="edit-preview">Preview One</button>
+        <button class="primary"     id="edExport"  data-testid="edit-export">Export Batch</button>
+        <button class="ghost"       id="edCancel"  data-testid="edit-cancel">Cancel</button>
+        <button class="ghost"       id="edOpen"    data-testid="edit-open">Open Edited Files</button>
+      </div>
+
+      <canvas id="edCanvas" width="540" height="960" data-testid="edit-canvas"></canvas>
+      <div class="status-pane" id="edStatus" data-testid="edit-status"></div>
+    </section>
+
+    <!-- ============= SETTINGS ============= -->
+    <section id="tab-settings" class="panel">
+      <div class="grid-2">
+        <label class="field">
+          <span>Default Platform</span>
+          <select id="sDefPlatform" data-testid="settings-default-platform">
+            <option value="grok">Grok</option><option value="flow">Flow</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Default Type</span>
+          <select id="sDefType" data-testid="settings-default-type">
+            <option value="text_to_video">Text → Video</option>
+            <option value="text_to_image">Text → Image</option>
+            <option value="image_to_video">Image → Video</option>
+            <option value="start_end_video">Start + End Frame Video</option>
+            <option value="prompt_image">Prompt + Image Upload</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Default Method</span>
+          <select id="sDefMethod" data-testid="settings-default-method">
+            <option value="auto">Auto</option>
+            <option value="native">Native Bulk</option>
+            <option value="multitab">Multi-Tab</option>
+            <option value="hybrid">Hybrid</option>
+          </select>
+        </label>
+        <label class="field"><span>Default Batch</span>
+          <input id="sDefBatch" type="number" min="1" max="50" data-testid="settings-default-batch" /></label>
+        <label class="field"><span>Default Project name</span>
+          <input id="sDefProject" data-testid="settings-default-project" /></label>
+        <label class="field"><span>Delay (ms)</span>
+          <input id="sDelay" type="number" min="0" data-testid="settings-delay" /></label>
+        <label class="field"><span>Timeout (ms)</span>
+          <input id="sTimeout" type="number" min="0" data-testid="settings-timeout" /></label>
+        <label class="field"><span>Retries</span>
+          <input id="sRetries" type="number" min="0" data-testid="settings-retries" /></label>
+        <label class="field"><span>Workers (multi-tab)</span>
+          <input id="sWorkers" type="number" min="1" max="6" data-testid="settings-workers" /></label>
+      </div>
+
+      <div class="grid-2 toggles">
+        <label class="check"><input type="checkbox" id="sSmart" data-testid="settings-smart"/> Smart Concurrency</label>
+        <label class="check"><input type="checkbox" id="sAuto"  data-testid="settings-auto"/> Auto Mode</label>
+        <label class="check"><input type="checkbox" id="sDry"   data-testid="settings-dryrun"/> Dry Run</label>
+        <label class="check"><input type="checkbox" id="sAutoDl" data-testid="settings-auto-download"/> Auto-Download</label>
+        <label class="check"><input type="checkbox" id="sRename" data-testid="settings-rename"/> Rename Files</label>
+        <label class="check"><input type="checkbox" id="sDedup"  data-testid="settings-dedup"/> Avoid Duplicates</label>
+        <label class="check"><input type="checkbox" id="sScanAll" data-testid="settings-scan-all"/> Scan All Tabs</label>
+        <label class="check"><input type="checkbox" id="sMobile" data-testid="settings-mobile"/> Mobile Lightweight</label>
+        <label class="check"><input type="checkbox" id="sLogs"   data-testid="settings-logs"/> Enable Logs</label>
+      </div>
+
+      <div class="row gap">
+        <button class="primary" id="sSave" data-testid="settings-save">Save Settings</button>
+        <button class="ghost"   id="calOpenGrok" data-testid="cal-open-grok">Calibrate Grok</button>
+        <button class="ghost"   id="calOpenFlow" data-testid="cal-open-flow">Calibrate Flow</button>
+        <button class="ghost"   id="calReset"    data-testid="cal-reset">Reset Calibration</button>
+        <button class="ghost"   id="projExport"  data-testid="proj-export">Export Projects</button>
+        <button class="ghost"   id="projImport"  data-testid="proj-import">Import Projects</button>
+        <button class="ghost"   id="logExport"   data-testid="log-export">Export Logs</button>
+        <button class="ghost"   id="logClear"    data-testid="log-clear">Clear Logs</button>
+      </div>
+      <div class="status-pane" id="sStatus" data-testid="settings-status"></div>
+    </section>
+  </main>
+
+  <footer class="bottombar">
+    <small id="bottomLog" data-testid="bottom-log">Ready.</small>
+  </footer>
+
+  <input id="hiddenImport" type="file" accept="application/json" style="display:none" />
+
+  <script type="module" src="sidepanel.js"></script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calibrate Selectors — AI Bulk Studio</title>
+  <link rel="stylesheet" href="../sidepanel/sidepanel.css" />
+  <style>
+    body{padding:18px}
+    .field-row{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:8px}
+    .field-row label{flex:1;color:var(--text)}
+    .field-row code{flex:2;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .field-row .actions{display:flex;gap:6px}
+    .field-row button{min-width:80px;padding:8px}
+    .ok{color:var(--ok)} .bad{color:var(--err)} .warn{color:var(--warn)}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    @media (max-width:600px){.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="top">
+    <h2 style="margin:0">Calibration</h2>
+    <div>
+      <label>Platform:
+        <select id="platform" data-testid="cal-platform">
+          <option value="grok">Grok</option>
+          <option value="flow">Flow</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <p>For each role, open the target site and click <b>Pick</b>, then click the element on the page. Use <b>Test</b> to verify, and <b>Save</b> to store. Reset returns to built-in defaults.</p>
+
+  <div id="rows"></div>
+
+  <div class="row gap" style="margin-top:14px">
+    <button class="primary" id="saveAll" data-testid="cal-save">Save All</button>
+    <button class="ghost"   id="resetAll" data-testid="cal-reset-all">Reset to Defaults</button>
+    <button class="ghost"   id="exportSel" data-testid="cal-export">Export</button>
+    <button class="ghost"   id="importSel" data-testid="cal-import">Import</button>
+    <input id="impFile" type="file" accept="application/json" style="display:none" />
+  </div>
+
+  <div class="status-pane" id="status" data-testid="cal-status" style="margin-top:12px;min-height:60px"></div>
+
+  <script type="module" src="calibration.js"></script>
+</body>
+</html>
