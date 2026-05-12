@@ -102,6 +102,16 @@ button:disabled{opacity:.55;cursor:not-allowed}
 /* Bottom bar */
 .bottombar{position:sticky;bottom:0;background:var(--bg-2);border-top:1px solid var(--line);padding:10px 14px;color:var(--muted)}
 
+/* Calibration banner */
+.cal-banner{
+  display:flex;align-items:center;gap:10px;background:linear-gradient(180deg,rgba(245,196,81,.15),rgba(255,176,32,.08));
+  border:1px solid rgba(245,196,81,.5);border-radius:12px;padding:10px 12px;color:var(--text)
+}
+.cal-banner .cal-banner-body{flex:1;display:flex;flex-direction:column}
+.cal-banner strong{color:var(--warn)}
+.cal-banner small{color:var(--muted);font-size:12px}
+.cal-banner button{flex:0 0 auto;min-width:120px}
+
 /* Mobile tighten */
 @media (max-width:380px){
   .grid-2{grid-template-columns:1fr}

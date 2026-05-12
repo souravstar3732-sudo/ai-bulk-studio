@@ -27,6 +27,13 @@
   <main>
     <!-- ============= GENERATE ============= -->
     <section id="tab-generate" class="panel active">
+      <div id="calBanner" class="cal-banner" style="display:none" data-testid="cal-banner">
+        <div class="cal-banner-body">
+          <strong>Calibration required</strong>
+          <small id="calBannerMsg">A required element was not found on the page.</small>
+        </div>
+        <button class="primary" id="calBannerBtn" data-testid="cal-banner-btn">Calibrate now</button>
+      </div>
       <div class="grid-2">
         <label class="field">
           <span>Platform</span>

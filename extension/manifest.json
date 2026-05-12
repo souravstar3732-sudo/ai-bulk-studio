@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "AI Bulk Generator Downloader Editor",
   "short_name": "AI Bulk Studio",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Bulk generate, download, and batch edit AI videos/images from Grok Imagine and Google Flow/Veo. Mobile-friendly side panel UI.",
   "icons": {
     "16": "icons/icon16.png",

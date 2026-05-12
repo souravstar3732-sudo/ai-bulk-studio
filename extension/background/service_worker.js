@@ -43,6 +43,12 @@ chrome.runtime.onInstalled.addListener(async () => {
     activeProjectId: null,
     logs: []
   });
+  // Migrate selectors when bundled defaults version changes
+  const stored = await Storage.get(["selectors"]);
+  if (!stored.selectors || stored.selectors._version !== DEFAULT_SELECTORS._version) {
+    await Storage.set({ selectors: DEFAULT_SELECTORS });
+    Logger.info("Selectors migrated to version " + DEFAULT_SELECTORS._version);
+  }
   Logger.info("Installed v1.0.0");
   // Enable side panel auto-open on action click on supported Chrome
   try {
@@ -159,8 +165,9 @@ const state = {
 };
 
 async function startGeneration(payload) {
-  // payload: { project, prompts, method, batchSize, generationType, startImages?, endImages?, dryRun? }
-  const project = await Project.upsertActive(payload.project);
+  // payload contains the project fields flat plus prompts/images/dryRun
+  payload = payload || {};
+  const project = await Project.upsertActive(payload);
   state.running = true; state.paused = false; state.stopped = false;
   state.projectId = project.id;
 
@@ -234,12 +241,29 @@ async function pump() {
   }, 60000);
 
   if (!csRes || !csRes.ok) {
-    // Mark as failed for this batch and retry per-item via multi-tab fallback
-    Logger.warn("Native batch failed; falling back per-prompt: " + (csRes && csRes.error));
+    // Mark as failed for this batch. If the failure is a selector/calibration
+    // issue, pause the whole job and surface a clear "calibrate now" message.
+    const reason = (csRes && csRes.error) || "batch dispatch failed";
+    const needsCal = /not\s*found|prompt input|generate button|run all|selector/i.test(reason);
+    Logger.warn("Native batch failed: " + reason);
     for (const item of batch) {
-      Tracker.update(project.tracker, item.idx, { status: "failed", error: (csRes && csRes.error) || "batch dispatch failed" });
+      Tracker.update(project.tracker, item.idx, {
+        status: "failed",
+        error: reason,
+        needsCalibration: needsCal
+      });
     }
     await Project.save(project);
+    if (needsCal) {
+      state.paused = true;
+      notifyUi({
+        type: "PAUSE_REASON",
+        reason: "needs_calibration",
+        platform: project.platform,
+        message: `Could not find a key element on ${project.platform === "flow" ? "Google Flow" : "Grok"} (${reason}). Open Settings → Calibrate ${project.platform === "flow" ? "Flow" : "Grok"} to fix.`
+      });
+      return; // stop pump until user resumes after calibration
+    }
   } else {
     // CS reports per-card statuses via CS_REPORT. Optimistically mark submitted.
     for (const item of batch) {

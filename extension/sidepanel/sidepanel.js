@@ -91,6 +91,10 @@ function updateMapping() {
 }
 
 async function startBulk({ dryRun = false } = {}) {
+  // Hide any prior calibration banner — user is starting a fresh attempt
+  const banner = document.getElementById("calBanner");
+  if (banner) banner.style.display = "none";
+
   const prompts = getPromptsArr();
   if (!prompts.length) { statusLine("#genStatus", "No prompts."); return; }
   const batchVal = gBatch.value === "custom" ? Number(prompt("Custom batch size:") || 5) : Number(gBatch.value);
@@ -352,9 +356,33 @@ chrome.runtime.onMessage.addListener((msg) => {
   if (msg?.type === "TRACKER_UPDATE") refreshTracker();
   if (msg?.type === "GEN_DONE") statusLine("#genStatus", "Generation complete.");
   if (msg?.type === "DL_DONE") statusLine("#dlStatus", `Scan complete — ${msg.downloaded}/${msg.found} downloaded.`);
-  if (msg?.type === "LAYOUT_CHANGE") statusLine("#genStatus", `Layout change on ${msg.platform}. Please recalibrate.`);
-  if (msg?.type === "PAUSE_REASON") statusLine("#genStatus", `Paused: ${msg.reason} — ${msg.message||""}`);
+  if (msg?.type === "LAYOUT_CHANGE") {
+    statusLine("#genStatus", `Layout change on ${msg.platform}. Please recalibrate.`);
+    showCalibrationBanner(msg.platform, "The result area selector vanished. Recalibrate to fix.");
+  }
+  if (msg?.type === "PAUSE_REASON") {
+    statusLine("#genStatus", `Paused: ${msg.reason} — ${msg.message||""}`);
+    if (msg.reason === "needs_calibration" || msg.reason === "layout_change") {
+      showCalibrationBanner(msg.platform, msg.message || "");
+    }
+  }
 });
+
+function showCalibrationBanner(platform, message) {
+  const banner = document.getElementById("calBanner");
+  const msgEl  = document.getElementById("calBannerMsg");
+  const btn    = document.getElementById("calBannerBtn");
+  if (!banner) return;
+  msgEl.textContent = message || `Open Settings → Calibrate ${platform === "flow" ? "Flow" : "Grok"} to bind correct selectors.`;
+  banner.style.display = "flex";
+  btn.onclick = async () => {
+    await send("CALIBRATE_OPEN", { platform: platform || "grok" });
+    banner.style.display = "none";
+  };
+  // Auto switch to Generate tab so the user sees the banner
+  tabBtns.forEach(x => x.classList.toggle("active", x.dataset.tab === "generate"));
+  Object.entries(panels).forEach(([k,p]) => p.classList.toggle("active", k === "generate"));
+}
 
 // ===== Helpers =====
 function downloadAsFile(text, name, mime) {

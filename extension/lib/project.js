@@ -54,8 +54,9 @@ export const Project = {
     return project;
   },
   async upsertActive(partial) {
+    partial = partial || {};
     const { projects = {}, activeProjectId } = await Storage.get(["projects","activeProjectId"]);
-    if (partial && partial.id && projects[partial.id]) {
+    if (partial.id && projects[partial.id]) {
       const next = { ...projects[partial.id], ...partial, updatedAt: Date.now() };
       projects[partial.id] = next;
       await Storage.set({ projects, activeProjectId: partial.id });
@@ -67,7 +68,7 @@ export const Project = {
       await Storage.set({ projects });
       return next;
     }
-    return await this.create(partial || {});
+    return await this.create(partial);
   },
   async remove(id) {
     const { projects = {}, activeProjectId } = await Storage.get(["projects","activeProjectId"]);
