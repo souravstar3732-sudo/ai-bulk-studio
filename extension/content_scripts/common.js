@@ -71,18 +71,60 @@
     if (!el) return false;
     const tag = el.tagName.toLowerCase();
     el.focus();
+    // Attempt 1: native value setter + input/change events (works with most React inputs)
     if (tag === "textarea" || tag === "input") {
-      const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value") ||
-                     Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value");
-      if (setter && setter.set) setter.set.call(el, value);
-      else el.value = value;
-      el.dispatchEvent(new Event("input", { bubbles: true }));
-      el.dispatchEvent(new Event("change", { bubbles: true }));
+      try {
+        const proto = tag === "textarea" ? window.HTMLTextAreaElement.prototype : window.HTMLInputElement.prototype;
+        const setter = Object.getOwnPropertyDescriptor(proto, "value");
+        if (setter && setter.set) setter.set.call(el, value);
+        else el.value = value;
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+      } catch (e) {
+        el.value = value;
+      }
+      // Verify it stuck
+      if (el.value === value) return true;
+      // Attempt 2: execCommand insertText (works for some React inputs that ignore .value)
+      try {
+        el.focus();
+        if (document.execCommand) {
+          // Select all then replace
+          el.select && el.select();
+          document.execCommand("insertText", false, value);
+        }
+      } catch (e) {}
+      if (el.value === value || (el.value && el.value.length >= Math.min(value.length, 10))) return true;
+      // Attempt 3: dispatch beforeinput + input with inputType
+      try {
+        el.value = "";
+        el.dispatchEvent(new InputEvent("beforeinput", { bubbles: true, cancelable: true, inputType: "insertText", data: value }));
+        el.value = value;
+        el.dispatchEvent(new InputEvent("input", { bubbles: true, cancelable: true, inputType: "insertText", data: value }));
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+      } catch (e) {}
+      return el.value === value;
     } else if (el.isContentEditable) {
-      el.textContent = value;
+      el.focus();
+      try {
+        // Select existing content
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const sel = window.getSelection();
+        sel.removeAllRanges(); sel.addRange(range);
+        if (document.execCommand) {
+          document.execCommand("insertText", false, value);
+        } else {
+          el.textContent = value;
+        }
+      } catch (e) {
+        el.textContent = value;
+      }
       el.dispatchEvent(new InputEvent("input", { bubbles: true, data: value }));
-    } else return false;
-    return true;
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+      return (el.textContent || "").indexOf(value) !== -1 || (el.innerText || "").indexOf(value) !== -1;
+    }
+    return false;
   }
 
   async function attachFileToInput(input, fileObj) {
@@ -176,6 +218,108 @@
   window.BulkStudioCS = {
     $, $$, tryQuery, resolveSelector, resolveAll, isVisible,
     fireInput, attachFileToInput, sleep, waitFor,
-    getSelectors, fingerprintEl, hashString, notifyBg, watchLayout, findByContains
+    getSelectors, fingerprintEl, hashString, notifyBg, watchLayout, findByContains,
+    diagnose, heuristicFindPromptInput, heuristicFindGenerateButton, buildSelectorFor
   };
+
+  // --- DOM diagnosis: list candidate elements that look like prompt / button / upload
+  function diagnose() {
+    const cand = {
+      textareas: [],
+      inputs: [],
+      contentEditables: [],
+      buttons: [],
+      fileInputs: [],
+      videos: [],
+      images: []
+    };
+    const describe = (el) => {
+      const r = el.getBoundingClientRect();
+      return {
+        tag: el.tagName,
+        id: el.id || null,
+        cls: Array.from(el.classList).slice(0, 5).join(" "),
+        testid: el.getAttribute("data-testid") || null,
+        aria: el.getAttribute("aria-label") || null,
+        placeholder: el.getAttribute("placeholder") || null,
+        type: el.getAttribute("type") || null,
+        name: el.getAttribute("name") || null,
+        accept: el.getAttribute("accept") || null,
+        role: el.getAttribute("role") || null,
+        text: (el.innerText || el.textContent || "").trim().slice(0, 80),
+        w: Math.round(r.width), h: Math.round(r.height),
+        visible: isVisible(el),
+        selector: buildSelectorFor(el)
+      };
+    };
+    document.querySelectorAll("textarea").forEach(el => cand.textareas.push(describe(el)));
+    document.querySelectorAll('input:not([type="file"])').forEach(el => cand.inputs.push(describe(el)));
+    document.querySelectorAll('[contenteditable="true"], [contenteditable=""]').forEach(el => cand.contentEditables.push(describe(el)));
+    document.querySelectorAll("button, [role='button']").forEach(el => cand.buttons.push(describe(el)));
+    document.querySelectorAll('input[type="file"]').forEach(el => cand.fileInputs.push(describe(el)));
+    document.querySelectorAll("video").forEach(el => cand.videos.push(describe(el)));
+    document.querySelectorAll("img").forEach((el, i) => { if (i < 50) cand.images.push(describe(el)); });
+    return cand;
+  }
+
+  function heuristicFindPromptInput() {
+    // Prefer visible textarea with placeholder containing "prompt"/"imagine"/"describe"
+    const all = Array.from(document.querySelectorAll('textarea, div[contenteditable="true"]'));
+    const visible = all.filter(isVisible);
+    const scored = visible.map(el => {
+      const p = (el.getAttribute("placeholder") || "").toLowerCase();
+      const a = (el.getAttribute("aria-label") || "").toLowerCase();
+      const id = (el.getAttribute("data-testid") || "").toLowerCase();
+      let s = 0;
+      if (/imagine|prompt|describe/.test(p)) s += 5;
+      if (/imagine|prompt|describe/.test(a)) s += 4;
+      if (/imagine|prompt/.test(id)) s += 6;
+      const r = el.getBoundingClientRect();
+      if (r.width > 200 && r.height > 30) s += 2;
+      if (el.tagName === "TEXTAREA") s += 1;
+      return { el, s };
+    }).sort((a,b) => b.s - a.s);
+    return scored[0]?.el || null;
+  }
+
+  function heuristicFindGenerateButton(promptEl) {
+    const buttons = Array.from(document.querySelectorAll('button, [role="button"]')).filter(isVisible);
+    const scored = buttons.map(el => {
+      const t = (el.innerText || "").trim().toLowerCase();
+      const a = (el.getAttribute("aria-label") || "").toLowerCase();
+      const id = (el.getAttribute("data-testid") || "").toLowerCase();
+      let s = 0;
+      if (/^generate|^create|^submit|^run|^imagine|^make/.test(t)) s += 5;
+      if (/generate|create|submit|run all/.test(a)) s += 4;
+      if (/submit|generate|create|imagine/.test(id)) s += 6;
+      // Often the generate button is near the prompt input
+      if (promptEl) {
+        const r1 = promptEl.getBoundingClientRect();
+        const r2 = el.getBoundingClientRect();
+        const dist = Math.hypot(r1.left - r2.left, r1.top - r2.top);
+        if (dist < 600) s += 2;
+        if (dist < 200) s += 2;
+      }
+      // type=submit boost
+      if ((el.getAttribute("type") || "").toLowerCase() === "submit") s += 3;
+      return { el, s };
+    }).sort((a,b) => b.s - a.s);
+    return scored[0]?.el || null;
+  }
+
+  function buildSelectorFor(el) {
+    if (!el) return "";
+    if (el.getAttribute && el.getAttribute("data-testid")) return `[data-testid="${el.getAttribute("data-testid")}"]`;
+    if (el.id) return `#${CSS.escape(el.id)}`;
+    const aria = el.getAttribute && el.getAttribute("aria-label");
+    if (aria) return `${el.tagName.toLowerCase()}[aria-label="${aria.replace(/"/g,'\\"')}"]`;
+    const cls = Array.from(el.classList || []).filter(c => !/^(hover|focus|active|js|is-|has-)/.test(c)).slice(0,2);
+    let path = el.tagName.toLowerCase();
+    if (cls.length) path += "." + cls.map(c => CSS.escape(c)).join(".");
+    if (el.parentElement) {
+      const sib = Array.from(el.parentElement.children).filter(s => s.tagName === el.tagName);
+      if (sib.length > 1) path += `:nth-of-type(${sib.indexOf(el)+1})`;
+    }
+    return path;
+  }
 })();

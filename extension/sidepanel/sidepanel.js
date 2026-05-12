@@ -97,10 +97,26 @@ async function startBulk({ dryRun = false } = {}) {
 
   const prompts = getPromptsArr();
   if (!prompts.length) { statusLine("#genStatus", "No prompts."); return; }
+
+  // Pre-flight: verify required selectors exist on the platform page BEFORE submitting
+  const platform = gPlatform.value;
+  statusLine("#genStatus", "Pre-flight check: verifying selectors on " + platform + " …");
+  const val = await send("VALIDATE_SELECTORS", { platform });
+  if (!val || !val.ok) {
+    const miss = [];
+    if (val && val.promptInput && !val.promptInput.found)  miss.push("prompt input");
+    if (val && val.generateButton && !val.generateButton.found) miss.push("generate button");
+    const msg = `Pre-flight failed: ${miss.join(", ") || "selectors not found"} on ${platform}. Click "Diagnose Page" or "Open Calibration" to fix.`;
+    statusLine("#genStatus", msg);
+    showCalibrationBanner(platform, msg);
+    return;
+  }
+  statusLine("#genStatus", `Pre-flight OK · prompt=${val.promptInput.selector} · gen=${val.generateButton.selector}`);
+
   const batchVal = gBatch.value === "custom" ? Number(prompt("Custom batch size:") || 5) : Number(gBatch.value);
   const project = {
     name: gProject.value || "Untitled",
-    platform: gPlatform.value,
+    platform: platform,
     generationType: gType.value,
     method: gMethod.value,
     batchSize: batchVal,
@@ -140,11 +156,51 @@ $("#btnSaveProj").addEventListener("click", async () => {
   }
 });
 $("#btnSmart").addEventListener("click", async () => {
-  // Lightweight smart concurrency probe — just times PING_CS round trips to multiple tabs.
   statusLine("#genStatus", "Probing concurrency …");
   const start = Date.now();
   const r = await send("PING");
   statusLine("#genStatus", `Background round-trip: ${Date.now()-start}ms. Suggested workers: 2 (mobile-safe).`);
+});
+$("#btnValidate").addEventListener("click", async () => {
+  const platform = gPlatform.value;
+  statusLine("#genStatus", "Validating selectors on " + platform + " …");
+  const v = await send("VALIDATE_SELECTORS", { platform });
+  if (v && v.ok) {
+    statusLine("#genStatus", `✓ All required selectors found.\n  prompt: ${v.promptInput.selector}\n  generate: ${v.generateButton.selector} (text="${v.generateButton.text||""}")`);
+  } else {
+    const miss = [];
+    if (v && v.promptInput && !v.promptInput.found)  miss.push("prompt input");
+    if (v && v.generateButton && !v.generateButton.found) miss.push("generate button");
+    statusLine("#genStatus", "✗ Missing: " + (miss.join(", ") || "selectors") + ". Open Calibration to bind them.");
+    showCalibrationBanner(platform, "Validate Selectors failed: " + miss.join(", "));
+  }
+});
+$("#btnDiagnose").addEventListener("click", async () => {
+  const platform = gPlatform.value;
+  const out = $("#diagOutput");
+  out.style.display = "block";
+  out.textContent = "Diagnosing " + platform + " page …";
+  const r = await send("DIAGNOSE_PAGE", { platform });
+  if (!r.ok) { out.textContent = "ERR: " + r.error; return; }
+  const dom = r.dom;
+  const list = [];
+  list.push(`URL: ${r.url}\n`);
+  const fmt = (arr, name) => {
+    if (!arr.length) return `\n${name}: (none)\n`;
+    return `\n${name} (${arr.length}):\n` + arr.slice(0,15).map((e,i) =>
+      `  ${i+1}. ${e.tag}${e.testid?` testid="${e.testid}"`:""}${e.aria?` aria="${e.aria}"`:""}${e.placeholder?` ph="${e.placeholder}"`:""}${e.text?` "${e.text.slice(0,40)}"`:""} [${e.w}x${e.h}${e.visible?"":" hidden"}]\n     → ${e.selector}`
+    ).join("\n") + "\n";
+  };
+  out.textContent = list.join("") +
+    fmt(dom.textareas.filter(x=>x.visible), "Textareas (visible)") +
+    fmt(dom.contentEditables.filter(x=>x.visible), "ContentEditables (visible)") +
+    fmt(dom.buttons.filter(x=>x.visible && x.text).slice(0,30), "Buttons with text (visible)") +
+    fmt(dom.fileInputs, "File inputs") +
+    fmt(dom.videos.filter(x=>x.visible), "Videos (visible)");
+  statusLine("#genStatus", `Diagnose complete: ${dom.textareas.length} textareas, ${dom.buttons.length} buttons, ${dom.fileInputs.length} file inputs.`);
+});
+$("#btnCalibrate").addEventListener("click", async () => {
+  await send("CALIBRATE_OPEN", { platform: gPlatform.value });
 });
 
 // ============== DOWNLOAD TAB ==============

@@ -39,10 +39,12 @@
   async function sequentialSubmissions(items, opts) {
     let ok = 0;
     for (const it of items) {
-      const input = CS.resolveSelector(SEL.promptInput);
-      if (!input) return { ok: false, error: "prompt input not found" };
-      CS.fireInput(input, it.prompt);
-      await CS.sleep(180);
+      let input = CS.resolveSelector(SEL.promptInput);
+      if (!input) input = CS.heuristicFindPromptInput();
+      if (!input) return { ok: false, error: "prompt input not found — please calibrate Flow in Settings" };
+      const ok1 = CS.fireInput(input, it.prompt);
+      if (!ok1) return { ok: false, error: "prompt input rejected text — try recalibrating Flow prompt field" };
+      await CS.sleep(220);
 
       if (opts.generationType === "image_to_video" || opts.generationType === "prompt_image") {
         const start = opts.startImages?.[it.idx - 1];
@@ -66,8 +68,9 @@
           await CS.sleep(150);
         }
       }
-      const gen = CS.resolveSelector(SEL.generateButton);
-      if (!gen) return { ok: false, error: "generate button not found" };
+      let gen = CS.resolveSelector(SEL.generateButton);
+      if (!gen) gen = CS.heuristicFindGenerateButton(input);
+      if (!gen) return { ok: false, error: "generate button not found — please calibrate Flow in Settings" };
       if (!opts.dryRun) gen.click();
       ok++;
       await CS.sleep(900);
@@ -128,6 +131,23 @@
       try {
         const t = msg?.type;
         if (t === "PING_CS") { sendResponse({ ok: true, platform: PLATFORM }); return; }
+
+        if (t === "DIAGNOSE_PAGE") {
+          sendResponse({ ok: true, platform: PLATFORM, url: location.href, dom: CS.diagnose() });
+          return;
+        }
+
+        if (t === "VALIDATE_SELECTORS") {
+          const inp = CS.resolveSelector(SEL.promptInput) || CS.heuristicFindPromptInput();
+          const gen = CS.resolveSelector(SEL.generateButton) || CS.heuristicFindGenerateButton(inp);
+          sendResponse({
+            ok: !!(inp && gen),
+            platform: PLATFORM,
+            promptInput: inp ? { found: true, selector: CS.buildSelectorFor(inp), tag: inp.tagName } : { found: false },
+            generateButton: gen ? { found: true, selector: CS.buildSelectorFor(gen), tag: gen.tagName, text: (gen.innerText||"").slice(0,40) } : { found: false }
+          });
+          return;
+        }
 
         if (t === "RUN_BATCH") {
           const block = detectBlocks();

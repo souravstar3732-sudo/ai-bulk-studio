@@ -43,10 +43,13 @@
   async function sequentialSubmissions(items, opts) {
     let ok = 0;
     for (const it of items) {
-      const input = CS.resolveSelector(SEL.promptInput);
-      if (!input) return { ok: false, error: "prompt input not found" };
-      CS.fireInput(input, it.prompt);
-      await CS.sleep(150);
+      // Resolve prompt input — first calibrated selector, then heuristic
+      let input = CS.resolveSelector(SEL.promptInput);
+      if (!input) input = CS.heuristicFindPromptInput();
+      if (!input) return { ok: false, error: "prompt input not found — please calibrate Grok in Settings" };
+      const ok1 = CS.fireInput(input, it.prompt);
+      if (!ok1) return { ok: false, error: "prompt input rejected text — try recalibrating Grok prompt field" };
+      await CS.sleep(220);
 
       // Image attachments per generation type
       if (opts.generationType === "image_to_video" || opts.generationType === "prompt_image") {
@@ -71,8 +74,9 @@
           await CS.sleep(150);
         }
       }
-      const gen = CS.resolveSelector(SEL.generateButton);
-      if (!gen) return { ok: false, error: "generate button not found" };
+      let gen = CS.resolveSelector(SEL.generateButton);
+      if (!gen) gen = CS.heuristicFindGenerateButton(input);
+      if (!gen) return { ok: false, error: "generate button not found — please calibrate Grok in Settings" };
       if (!opts.dryRun) gen.click();
       ok++;
       await CS.sleep(900);
@@ -192,6 +196,18 @@
         fingerprint: it.fingerprint
       }));
       if (reportItems.length) {
+        CS.notifyBg({ kind: "card_update", platform: PLATFORM, items: reportItems });
+      }
+      const block = detectBlocks();
+      if (block) {
+        CS.notifyBg({ kind: block, platform: PLATFORM, message: "Detected " + block });
+        clearInterval(polling); polling = null;
+      }
+    }, 3000);
+    setTimeout(() => { if (polling) { clearInterval(polling); polling = null; } }, 8 * 60 * 1000);
+  }
+})();
+h) {
         CS.notifyBg({ kind: "card_update", platform: PLATFORM, items: reportItems });
       }
       const block = detectBlocks();

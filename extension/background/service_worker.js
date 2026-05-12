@@ -140,6 +140,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           await handleCsReport(msg.payload, sender);
           sendResponse({ ok: true }); break;
 
+        case "DIAGNOSE_PAGE":
+          sendResponse(await diagnosePage(msg.platform)); break;
+        case "VALIDATE_SELECTORS":
+          sendResponse(await validateSelectors(msg.platform)); break;
+
         case "PING":
           sendResponse({ ok: true, pong: Date.now() }); break;
 
@@ -458,6 +463,21 @@ async function collectTargetTabs(platform, scanAll) {
 }
 
 function detectPlat(url){ if(!url) return "grok"; if(url.includes("grok")) return "grok"; if(url.includes("labs.google")||url.includes("flow.google")) return "flow"; return "grok"; }
+
+// ---------- Diagnose & Validate (helpers for side panel) ----------
+async function diagnosePage(platform) {
+  const tab = await ensurePlatformTab(platform || "grok");
+  await waitForCs(tab.id, platform || detectPlat(tab.url), 8000);
+  const r = await safeSendCs(tab.id, { type: "DIAGNOSE_PAGE" }, 8000);
+  return r && r.ok ? { ok: true, ...r } : { ok: false, error: (r && r.error) || "diagnose failed" };
+}
+
+async function validateSelectors(platform) {
+  const tab = await ensurePlatformTab(platform || "grok");
+  await waitForCs(tab.id, platform || detectPlat(tab.url), 8000);
+  const r = await safeSendCs(tab.id, { type: "VALIDATE_SELECTORS" }, 6000);
+  return r || { ok: false, error: "validate failed" };
+}
 
 // ---------- UI notifier ----------
 function notifyUi(msg) {

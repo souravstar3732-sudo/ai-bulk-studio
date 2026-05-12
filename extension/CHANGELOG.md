@@ -1,6 +1,18 @@
 # Changelog
 
-## 1.0.1 — 2026-01-12 (hot-fix)
+## 1.0.2 — 2026-01-12
+
+### Added
+- **Diagnose Page** button on the Generate tab — switches to the active Grok/Flow tab and lists every visible textarea, contenteditable, button, file input and video. Each row shows the exact CSS selector you can paste into calibration. This is the fastest way to see *what's really on the page*.
+- **Validate Selectors** button on the Generate tab — checks whether the calibrated prompt input and generate button can actually be found on the active platform tab, with the selectors and matched element shown.
+- **Open Calibration** button on the Generate tab for a faster path from "this isn't working" → fix.
+- **Pre-flight check before Start Bulk** — the side panel now validates that the prompt input and generate button exist *before* dispatching any prompts. If they don't, it stops immediately and shows the calibration banner with a one-tap fix button. No more silently FAILED batches.
+- **Heuristic auto-find** in content scripts — when calibrated selectors miss, the extension scores candidate elements (placeholder/aria text, size, position, type) to pick a likely prompt input and generate button automatically, as a last-resort fallback.
+
+### Improved
+- `fireInput` now uses **three insertion strategies** in order and **verifies the value actually took** before clicking Generate: (1) native value setter + input/change events (works for most React inputs), (2) `execCommand("insertText")` (works for React inputs that ignore `.value`), (3) `beforeinput`/`input` with `InputEvent` carrying `inputType: "insertText"`. ContentEditable fields use selection + `execCommand` insertion.
+
+## 1.0.1 — 2026-01-12
 
 ### Fixed
 - **Critical**: `Cannot read properties of undefined (reading 'forceNew')` crash on first Start Bulk after extension load. Root cause: side panel sent project fields flat in `payload` but the service worker read `payload.project` (undefined). Now `Project.upsertActive` handles `undefined` defensively and the service worker passes `payload` correctly.
